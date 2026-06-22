@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>OrganicVase Designer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0F1117;--panel-bg:#1A1D27;--border:#2A2D3A;
+  --accent:#1E90FF;--accent-bright:#62E9FB;
+  --text:#E0E4F0;--text-muted:#7A7F9A;
+  --header-h:52px;--status-h:34px;
+  --zone-bot:#1E90FF;--zone-mid:#62E9FB;--zone-top:#B464FF;
+}
+body{background:var(--bg);color:var(--text);font-family:'Inter','Segoe UI',system-ui,sans-serif;font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* HEADER */
+#header{height:var(--header-h);background:var(--panel-bg);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;z-index:100}
+#app-name{font-size:15px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;white-space:nowrap}
+#app-name .dot{width:8px;height:8px;border-radius:50%;background:var(--accent-bright);box-shadow:0 0 6px var(--accent-bright)}
+.hsp{flex:1}
+#design-name{background:transparent;border:1px solid transparent;border-radius:4px;color:var(--text-muted);font-size:13px;padding:4px 8px;outline:none;transition:border-color .15s;max-width:150px}
+#design-name:hover{border-color:var(--border)}
+#design-name:focus{border-color:var(--accent);color:var(--text)}
+.save-status{font-size:11px;color:var(--text-muted)}
+.hbtn{background:var(--border);border:1px solid #3A3D4A;border-radius:5px;color:var(--text);cursor:pointer;font-size:12px;padding:5px 11px;display:flex;align-items:center;gap:5px;transition:background .15s,border-color .15s;white-space:nowrap}
+.hbtn:hover{background:#2A2D3A;border-color:var(--accent)}
+.hbtn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.hbtn.primary:hover{background:#3BA0FF}
+
+/* WORKSPACE */
+#workspace{flex:1;display:flex;overflow:hidden}
+#vp{flex:1;position:relative;background:var(--bg);overflow:hidden}
+#three-canvas{display:block;width:100%;height:100%}
+
+/* VP overlays */
+#vp-tl{position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:6px;z-index:10}
+#vp-tr{position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:6px;z-index:10;align-items:flex-end}
+.vbtn{background:rgba(26,29,39,.9);border:1px solid var(--border);border-radius:5px;color:var(--text-muted);cursor:pointer;font-size:11px;padding:5px 9px;backdrop-filter:blur(4px);transition:color .15s,border-color .15s;white-space:nowrap}
+.vbtn:hover,.vbtn.on{color:var(--accent-bright);border-color:var(--accent)}
+.vgroup{display:flex;gap:3px;background:rgba(26,29,39,.9);border:1px solid var(--border);border-radius:5px;padding:3px;backdrop-filter:blur(4px)}
+.vgroup .vbtn{background:transparent;border:none;border-radius:3px;padding:4px 8px}
+.vgroup .vbtn.on{background:var(--accent);color:#fff}
+
+#panel-toggle{position:absolute;right:0;top:50%;transform:translateY(-50%);z-index:20;background:var(--panel-bg);border:1px solid var(--border);border-right:none;border-radius:6px 0 0 6px;color:var(--text-muted);cursor:pointer;padding:10px 5px;font-size:12px;transition:color .15s}
+#panel-toggle:hover{color:var(--accent-bright)}
+
+/* PARAM PANEL */
+#pp{width:340px;background:var(--panel-bg);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;transition:width .25s,opacity .25s}
+#pp.closed{width:0;opacity:0;border-left:none}
+#pp-inner{overflow-y:auto;flex:1;padding:10px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+
+/* SECTIONS */
+.sec{margin-bottom:8px;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.sec-hd{background:#1E2130;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);transition:color .15s}
+.sec-hd:hover{color:var(--text)}
+.sec-hd .chev{transition:transform .2s;font-size:10px}
+.sec-hd.shut .chev{transform:rotate(-90deg)}
+.sec-bd{padding:10px;display:flex;flex-direction:column;gap:9px}
+.sec-bd.shut{display:none}
+
+/* ZONE TAB BAR */
+.zone-tabs{display:flex;gap:4px;margin-bottom:10px}
+.ztab{flex:1;padding:7px 4px;border-radius:5px;border:1px solid var(--border);background:#12141E;cursor:pointer;font-size:11px;font-weight:600;text-align:center;transition:all .15s;color:var(--text-muted)}
+.ztab.bot.on{border-color:var(--zone-bot);color:var(--zone-bot);background:rgba(30,144,255,.12)}
+.ztab.mid.on{border-color:var(--zone-mid);color:var(--zone-mid);background:rgba(98,233,251,.1)}
+.ztab.top.on{border-color:var(--zone-top);color:var(--zone-top);background:rgba(180,100,255,.12)}
+.ztab:hover{border-color:var(--accent)}
+
+/* PROFILE PICKER */
+.profile-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+.pcard{border:1px solid var(--border);border-radius:5px;background:#12141E;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;gap:4px;transition:border-color .15s}
+.pcard:hover{border-color:var(--accent)}
+.pcard.on{border-color:var(--accent-bright)}
+.pcard canvas{width:56px;height:56px;border-radius:3px}
+.pcard span{font-size:9px;color:var(--text-muted);text-align:center;line-height:1.2}
+.pcard.on span{color:var(--accent-bright)}
+
+/* CONTROLS */
+.cr{display:flex;flex-direction:column;gap:4px}
+.cl{display:flex;justify-content:space-between;align-items:center;color:var(--text-muted);font-size:11px}
+.cl .v{color:var(--accent-bright);font-variant-numeric:tabular-nums;font-size:11px}
+input[type=range]{-webkit-appearance:none;width:100%;height:3px;background:var(--border);border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;background:var(--accent);border-radius:50%;cursor:pointer;border:2px solid var(--panel-bg);box-shadow:0 0 4px rgba(30,144,255,.5)}
+input[type=range]::-webkit-slider-thumb:hover{background:var(--accent-bright)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+label.ck{display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;cursor:pointer}
+label.ck input{accent-color:var(--accent);width:13px;height:13px}
+
+/* IMPORT BTN */
+.ibtn{background:#12141E;border:1px dashed var(--border);border-radius:5px;color:var(--text-muted);cursor:pointer;font-size:11px;padding:8px;width:100%;text-align:center;transition:border-color .15s}
+.ibtn:hover{border-color:var(--accent);color:var(--accent-bright)}
+
+/* STATUS */
+#sb{height:var(--status-h);background:var(--panel-bg);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:16px;flex-shrink:0;font-size:11px;color:var(--text-muted)}
+.si{display:flex;align-items:center;gap:4px}
+.si .lbl{opacity:.6}
+.si .val{color:var(--text);font-variant-numeric:tabular-nums}
+.sdiv{width:1px;height:14px;background:var(--border)}
+.ubtn{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:2px 5px;border-radius:3px;transition:color .15s}
+.ubtn:hover{color:var(--accent-bright)}
+.ubtn:disabled{opacity:.3;cursor:default}
+
+/* LOADING */
+#loading{position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:999;transition:opacity .4s}
+#loading.gone{opacity:0;pointer-events:none}
+.spin{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+#loading p{color:var(--text-muted);font-size:12px}
+
+@media(max-width:900px){#workspace{flex-direction:column}#pp{width:100%;border-left:none;border-top:1px solid var(--border)}}
+@media(max-width:600px){#vp{height:300px;flex:none}}
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="spin"></div><p>Initialising OrganicVase Designer…</p></div>
+
+<header id="header">
+  <div id="app-name"><span class="dot"></span>OrganicVase Designer</div>
+  <div class="hsp"></div>
+  <input id="design-name" type="text" value="Untitled Vase"/>
+  <span class="save-status" id="save-status">Unsaved</span>
+  <button class="hbtn" id="btn-new">⊕ New</button>
+  <button class="hbtn" id="btn-open">📂 Open</button>
+  <button class="hbtn" id="btn-save">💾 Save</button>
+  <button class="hbtn primary" id="btn-export">↓ Export</button>
+</header>
+
+<div id="workspace">
+  <div id="vp">
+    <canvas id="three-canvas"></canvas>
+    <div id="vp-tl">
+      <button class="vbtn" id="btn-resetcam">⌖ Reset View</button>
+      <button class="vbtn on" id="btn-floor">⊟ Floor: On</button>
+      <button class="vbtn" id="btn-xs">⊡ X-Section: Off</button>
+    </div>
+    <div id="vp-tr">
+      <div class="vgroup" id="res-group">
+        <button class="vbtn" data-res="draft">Draft</button>
+        <button class="vbtn on" data-res="standard">Std</button>
+        <button class="vbtn" data-res="fine">Fine</button>
+      </div>
+    </div>
+    <button id="panel-toggle">‹ Params</button>
+  </div>
+
+  <div id="pp">
+    <div id="pp-inner">
+
+      <button class="hbtn" id="btn-rand" style="width:100%;justify-content:center;margin-bottom:10px">🎲 Randomise</button>
+
+      <!-- DIMENSIONS -->
+      <div class="sec">
+        <div class="sec-hd" data-s="dim">Dimensions <span class="chev">▾</span></div>
+        <div class="sec-bd" id="bd-dim">
+          <div class="cr"><div class="cl"><span>Vase Height</span><span class="v" id="v-height">200 mm</span></div><input type="range" id="sl-height" min="50" max="500" value="200" step="1"/></div>
+          <div class="cr"><div class="cl"><span>Wall Thickness</span><span class="v" id="v-wall">2.5 mm</span></div><input type="range" id="sl-wall" min="1" max="6" value="2.5" step="0.1"/></div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:-4px">🖨 Recommended (FDM): <span style="color:var(--accent-bright)">1.2–2.4 mm</span></div>
+          <div id="wall-warn" style="font-size:10px;color:#FF8C42;display:none;margin-top:-4px">⚠ Too thick for this form's thinnest point (max <span id="wall-warn-max"></span> mm)</div>
+          <div class="cr"><div class="cl"><span>Base Thickness</span><span class="v" id="v-basethick">3.0 mm</span></div><input type="range" id="sl-basethick" min="1" max="5" value="3" step="0.5"/></div>
+          <button class="hbtn" id="btn-golden" style="width:100%;justify-content:center;font-size:11px">✦ Golden Proportions</button>
+        </div>
+      </div>
+
+      <!-- TOP ADJUSTMENT -->
+      <div class="sec">
+        <div class="sec-hd" data-s="topadj">Top Adjustment <span class="chev">▾</span></div>
+        <div class="sec-bd" id="bd-topadj">
+          <div style="font-size:11px;color:var(--text-muted);line-height:1.5;background:#12141E;padding:8px;border-radius:4px;border:1px solid var(--border);margin-bottom:2px">
+            Tilts the top opening. <span style="color:#62E9FB">Positive</span> = centre rises, outside dips. <span style="color:#B464FF">Negative</span> = centre dips, outside rises (ruffled lip).
+          </div>
+          <div class="cr"><div class="cl"><span>Tilt</span><span class="v" id="v-tilt">0%</span></div><input type="range" id="sl-tilt" min="-100" max="100" value="0" step="1"/></div>
+          <div style="font-size:10px;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin-top:2px">Tilt Curve</div>
+          <div style="display:flex;gap:6px;margin-bottom:4px">
+            <button class="vbtn on" id="tilt-linear" style="flex:1;text-align:center">Linear</button>
+            <button class="vbtn" id="tilt-curved" style="flex:1;text-align:center">Curved</button>
+          </div>
+          <div id="tilt-curve-controls" style="display:none">
+            <div class="cr"><div class="cl"><span>Curve Power</span><span class="v" id="v-curvepow">2.0</span></div><input type="range" id="sl-curvepow" min="1.1" max="6" value="2" step="0.1"/></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ZONE LAYOUT -->
+      <div class="sec">
+        <div class="sec-hd" data-s="layout">Zone Layout <span class="chev">▾</span></div>
+        <div class="sec-bd" id="bd-layout">
+          <div class="cr"><div class="cl"><span>Middle Zone Height</span><span class="v" id="v-midpos">50%</span></div><input type="range" id="sl-midpos" min="10" max="90" value="50" step="1"/></div>
+          <div class="cr"><div class="cl"><span>Blend Width</span><span class="v" id="v-blend">50%</span></div><input type="range" id="sl-blend" min="0" max="100" value="50" step="1"/></div>
+          <label class="ck"><input type="checkbox" id="ck-morph-match"/> Match-point morphing (vs linear resample)</label>
+          <!-- Amplitude curve preview -->
+          <canvas id="amp-preview" width="300" height="50" style="width:100%;border-radius:4px;border:1px solid var(--border);background:#12141E"></canvas>
+        </div>
+      </div>
+
+      <!-- ZONE PROFILES -->
+      <div class="sec">
+        <div class="sec-hd" data-s="zones">Zone Profiles <span class="chev">▾</span></div>
+        <div class="sec-bd" id="bd-zones">
+
+          <!-- Zone tab bar -->
+          <div class="zone-tabs">
+            <div class="ztab bot on" data-zone="bot">⬇ Bottom</div>
+            <div class="ztab mid" data-zone="mid">◆ Middle</div>
+            <div class="ztab top" data-zone="top">⬆ Top</div>
+          </div>
+
+          <!-- Zone scale & twist (shown for active zone) -->
+          <div class="cr"><div class="cl"><span id="lbl-scale">Bottom Scale</span><span class="v" id="v-scale">60%</span></div><input type="range" id="sl-scale" min="5" max="100" value="60" step="1"/></div>
+          <div class="cr"><div class="cl"><span id="lbl-twist">Bottom Twist</span><span class="v" id="v-twist">0°</span></div><input type="range" id="sl-twist" min="-360" max="360" value="0" step="5"/></div>
+          <div class="cr"><div class="cl"><span>Twist Acceleration</span><span class="v" id="v-twacc">0%</span></div><input type="range" id="sl-twacc" min="0" max="100" value="0" step="1"/></div>
+
+          <div style="height:1px;background:var(--border);margin:2px 0"></div>
+
+          <!-- Profile picker grid -->
+          <div style="font-size:10px;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px" id="profile-shape-lbl">Profile Shape</div>
+          <div class="profile-grid" id="profile-grid"></div>
+
+          <!-- Middle zone modifier (shown only when mid tab active) -->
+          <div id="mid-modifier" style="display:none;flex-direction:column;gap:9px">
+            <div style="font-size:10px;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase">Mid Zone Shape Effect</div>
+            <div style="font-size:11px;color:var(--text-muted);line-height:1.5;background:#12141E;padding:8px;border-radius:4px;border:1px solid var(--border)">
+              Scale &gt;50% <span style="color:#62E9FB">bloats</span> the vase outward at the mid point.<br>
+              Scale &lt;50% <span style="color:#B464FF">pinches</span> it inward. 50% = pure linear blend.
+            </div>
+          </div>
+
+          <!-- Parametric profile controls (shown when "Custom" selected) -->
+          <div id="custom-controls">
+            <div class="cr"><div class="cl"><span>Ripple Count</span><span class="v" id="v-ripple">12</span></div><input type="range" id="sl-ripple" min="3" max="40" value="12" step="1"/></div>
+            <div class="cr"><div class="cl"><span>Amplitude</span><span class="v" id="v-amp">10%</span></div><input type="range" id="sl-amp" min="0" max="20" value="10" step="0.5"/></div>
+            <div class="cr"><div class="cl"><span>Sharpness</span><span class="v" id="v-sharp">20%</span></div><input type="range" id="sl-sharp" min="0" max="100" value="20" step="1"/></div>
+            <div class="cr"><div class="cl"><span>Organicness</span><span class="v" id="v-org">0%</span></div><input type="range" id="sl-org" min="0" max="100" value="0" step="1"/></div>
+          </div>
+
+          <!-- Polygon controls -->
+          <div id="polygon-controls" style="display:none">
+            <div class="cr"><div class="cl"><span>Sides</span><span class="v" id="v-sides">6</span></div><input type="range" id="sl-sides" min="3" max="20" value="6" step="1"/></div>
+            <div class="cr"><div class="cl"><span>Corner Rounding</span><span class="v" id="v-round">0%</span></div><input type="range" id="sl-round" min="0" max="100" value="0" step="1"/></div>
+          </div>
+
+          <!-- Ellipse controls -->
+          <div id="ellipse-controls" style="display:none">
+            <div class="cr"><div class="cl"><span>Width Ratio</span><span class="v" id="v-ew">100%</span></div><input type="range" id="sl-ew" min="20" max="200" value="100" step="1"/></div>
+            <div class="cr"><div class="cl"><span>Height Ratio</span><span class="v" id="v-eh">100%</span></div><input type="range" id="sl-eh" min="20" max="200" value="100" step="1"/></div>
+          </div>
+
+          <button class="ibtn" id="btn-import-svg">⊕ Import SVG profile…</button>
+          <input type="file" id="svg-file-input" accept=".svg" style="display:none"/>
+        </div>
+      </div>
+
+      <!-- WAVE MODULATION (Phase 2) -->
+      <div class="sec">
+        <div class="sec-hd" data-s="waves">Wave Modulation <span class="chev">▾</span></div>
+        <div class="sec-bd" id="bd-waves">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:12px;color:var(--text-muted)">Ripple overlay on vase walls</span>
+            <label class="ck" style="margin:0"><input type="checkbox" id="ck-wave-enable"/> Enable</label>
+          </div>
+          <div id="wave-controls" style="display:none;flex-direction:column;gap:9px">
+            <!-- Zone tabs -->
+            <div style="display:flex;gap:6px">
+              <button class="vbtn on" id="wz-top" style="flex:1">Top Zone</button>
+              <button class="vbtn" id="wz-bot" style="flex:1">Bot Zone</button>
+            </div>
+            <label class="ck"><input type="checkbox" id="ck-wave-link" checked/> Link zones (Top = Bot)</label>
+            <!-- Wave shape -->
+            <div>
+              <div style="font-size:10px;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Wave Shape</div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap">
+                <button class="vbtn on" data-wshape="sine"     style="flex:1;min-width:60px">Sine</button>
+                <button class="vbtn"    data-wshape="cosine"   style="flex:1;min-width:60px">Cosine</button>
+                <button class="vbtn"    data-wshape="sawtooth" style="flex:1;min-width:60px">Saw</button>
+                <button class="vbtn"    data-wshape="softsaw"  style="flex:1;min-width:60px">Soft Saw</button>
+              </div>
+            </div>
+            <div class="cr"><div class="cl"><span>Ripple Count</span><span class="v" id="v-w-ripple">12</span></div><input type="range" id="sl-w-ripple" min="1" max="40" value="12" step="1"/></div>
+            <div class="cr"><div class="cl"><span>Amplitude</span><span class="v" id="v-w-amp">6%</span></div><input type="range" id="sl-w-amp" min="0" max="30" value="6" step="0.5"/></div>
+            <div class="cr"><div class="cl"><span>Sharpness</span><span class="v" id="v-w-sharp">20%</span></div><input type="range" id="sl-w-sharp" min="0" max="100" value="20" step="1"/></div>
+            <div class="cr"><div class="cl"><span>Organicness</span><span class="v" id="v-w-org">0%</span></div><input type="range" id="sl-w-org" min="0" max="100" value="0" step="1"/></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GLOBAL -->
+      <div class="sec">
+        <div class="sec-hd" data-s="global">Global Phase <span class="chev">▾</span></div>
+        <div class="sec-bd" id="bd-global">
+          <div class="cr"><div class="cl"><span>Phase Offset</span><span class="v" id="v-phase">0°</span></div><input type="range" id="sl-phase" min="0" max="360" value="0" step="1"/></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="sb">
+  <div class="si"><span class="lbl">Verts:</span><span class="val" id="st-verts">—</span></div>
+  <div class="si"><span class="lbl">Faces:</span><span class="val" id="st-faces">—</span></div>
+  <div class="sdiv"></div>
+  <div class="si"><span class="val" id="st-res">Standard</span></div>
+  <div class="sdiv"></div>
+  <div class="si">
+    <button class="ubtn" id="btn-undo" disabled>↩</button>
+    <span class="val" id="st-undo">0</span>
+    <button class="ubtn" id="btn-redo" disabled>↪</button>
+    <span class="val" id="st-redo">0</span>
+  </div>
+  <div class="hsp"></div>
+  <div class="si" id="st-warn" style="color:#FF8C42;display:none">⚠ <span id="st-warn-txt"></span></div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div id="export-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:var(--panel-bg);border:1px solid var(--border);border-radius:8px;padding:18px;width:340px;display:flex;flex-direction:column;gap:14px;box-shadow:0 12px 40px rgba(0,0,0,.5)">
+    <div style="font-size:14px;font-weight:600;color:var(--text)">Export Vase</div>
+    <div class="cr">
+      <div class="cl"><span>Format</span></div>
+      <div class="vgroup" style="padding:3px">
+        <button class="vbtn on" data-expfmt="stl-bin" style="flex:1">STL Binary</button>
+        <button class="vbtn" data-expfmt="stl-ascii" style="flex:1">STL ASCII</button>
+        <button class="vbtn" data-expfmt="3mf" style="flex:1">3MF</button>
+      </div>
+    </div>
+    <div class="cr">
+      <div class="cl"><span>Resolution</span></div>
+      <div class="vgroup" id="exp-res-group" style="padding:3px">
+        <button class="vbtn" data-expres="coarse" style="flex:1">Coarse</button>
+        <button class="vbtn on" data-expres="medium" style="flex:1">Medium</button>
+        <button class="vbtn" data-expres="fine" style="flex:1">Fine</button>
+      </div>
+    </div>
+    <div class="cr">
+      <div class="cl"><span>Filename</span></div>
+      <input type="text" id="exp-name" style="background:#12141E;border:1px solid var(--border);border-radius:5px;color:var(--text);padding:6px 8px;font-size:12px;font-family:inherit;outline:none"/>
+    </div>
+    <div style="font-size:10px;color:var(--text-muted);line-height:1.4">Exports in millimetres (slicer-standard). Higher resolution = smoother mesh &amp; larger file.</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:2px">
+      <button class="hbtn" id="exp-cancel">Cancel</button>
+      <button class="hbtn primary" id="exp-go">Export</button>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.165.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.165.0/examples/jsm/","fflate":"https://unpkg.com/fflate@0.8.2/esm/browser.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+import { zipSync, strToU8 } from 'fflate';
+
+// ═══════════════════════════════════════════════════════════════════
+// SVG PROFILE DATA — embedded from uploaded files
+// Each profile: array of [x,z] points sampled around the cross-section
+// normalised to unit circle (max radius = 1)
+// ═══════════════════════════════════════════════════════════════════
+
+// Parse a single SVG cubic bezier path string into sampled points
+function parseSVGPath(pathStr, cx=0, cz=0, scale=1, samples=480) {
+  // Tokenise the path
+  const nums = s => s.match(/-?[\d.]+(?:e[+-]?\d+)?/gi)?.map(Number) || [];
+  const cmds = [];
+  let cur = pathStr.replace(/,/g,' ').trim();
+  // Split by command letters
+  const parts = cur.split(/(?=[MmCcLlZz])/);
+  let px=0,pz=0, sx=0,sz=0;
+  let lastCPx=0,lastCPz=0;
+  const segs = []; // {type, args}
+
+  for (const part of parts) {
+    const cmd = part[0];
+    const args = nums(part.slice(1));
+    if (!cmd) continue;
+    switch(cmd) {
+      case 'M': for(let i=0;i<args.length;i+=2){px=args[i];pz=args[i+1];if(i===0){sx=px;sz=pz;}else segs.push({t:'L',p0:[px,pz],p1:[args[i],args[i+1]]})} break;
+      case 'm': for(let i=0;i<args.length;i+=2){px+=args[i];pz+=args[i+1];if(i===0){sx=px;sz=pz;}else segs.push({t:'L',p0:[px,pz],p1:[px+args[i],pz+args[i+1]]})} break;
+      case 'C': for(let i=0;i<args.length;i+=6){segs.push({t:'C',p0:[px,pz],c1:[args[i],args[i+1]],c2:[args[i+2],args[i+3]],p1:[args[i+4],args[i+5]]});lastCPx=args[i+2];lastCPz=args[i+3];px=args[i+4];pz=args[i+5];} break;
+      case 'c': for(let i=0;i<args.length;i+=6){const ax=px+args[i],az=pz+args[i+1],bx=px+args[i+2],bz=pz+args[i+3],ex=px+args[i+4],ez=pz+args[i+5];segs.push({t:'C',p0:[px,pz],c1:[ax,az],c2:[bx,bz],p1:[ex,ez]});lastCPx=bx;lastCPz=bz;px=ex;pz=ez;} break;
+      case 'L': for(let i=0;i<args.length;i+=2){segs.push({t:'L',p0:[px,pz],p1:[args[i],args[i+1]]});px=args[i];pz=args[i+1];} break;
+      case 'l': for(let i=0;i<args.length;i+=2){segs.push({t:'L',p0:[px,pz],p1:[px+args[i],pz+args[i+1]]});px+=args[i];pz+=args[i+1];} break;
+      case 'Z': case 'z': segs.push({t:'L',p0:[px,pz],p1:[sx,sz]});px=sx;pz=sz; break;
+    }
+  }
+
+  // Sample evenly by arc-length approximation
+  const pts=[];
+  for(const seg of segs){
+    const steps = seg.t==='C' ? 20 : 2;
+    for(let j=0;j<steps;j++){
+      const u=j/steps;
+      let x,z;
+      if(seg.t==='C'){
+        const {p0,c1,c2,p1}=seg;
+        const om=1-u;
+        x=om*om*om*p0[0]+3*om*om*u*c1[0]+3*om*u*u*c2[0]+u*u*u*p1[0];
+        z=om*om*om*p0[1]+3*om*om*u*c1[1]+3*om*u*u*c2[1]+u*u*u*p1[1];
+      } else {
+        x=seg.p0[0]+(seg.p1[0]-seg.p0[0])*u;
+        z=seg.p0[1]+(seg.p1[1]-seg.p0[1])*u;
+      }
+      pts.push([x,z]);
+    }
+  }
+
+  // Translate by centre offset (from SVG transform)
+  const txPts = pts.map(([x,z])=>[x+cx, z+cz]);
+
+  // Find centroid
+  let mx=0,mz=0;
+  txPts.forEach(([x,z])=>{mx+=x;mz+=z;});
+  mx/=txPts.length; mz/=txPts.length;
+
+  // Normalise to unit radius
+  let maxR=0;
+  const centred = txPts.map(([x,z])=>{const dx=x-mx,dz=z-mz;maxR=Math.max(maxR,Math.sqrt(dx*dx+dz*dz));return[dx,dz];});
+  const normed = centred.map(([x,z])=>[x/(maxR||1), z/(maxR||1)]);
+
+  // Resample to exactly `samples` points by angular interpolation
+  // Convert to polar, sort by angle, then resample
+  const polar = normed.map(([x,z])=>{const a=Math.atan2(z,x),r=Math.sqrt(x*x+z*z);return{a,r};});
+  polar.sort((a,b)=>a.a-b.a);
+
+  const result=[];
+  for(let i=0;i<samples;i++){
+    const angle = -Math.PI + (i/samples)*2*Math.PI;
+    // Find surrounding points
+    let lo=0,hi=polar.length-1;
+    for(let j=0;j<polar.length-1;j++){if(polar[j].a<=angle&&polar[j+1].a>angle){lo=j;hi=j+1;break;}}
+    const a0=polar[lo].a,a1=polar[hi].a;
+    const t2=(a1-a0)>0?(angle-a0)/(a1-a0):0;
+    const r=polar[lo].r+(polar[hi].r-polar[lo].r)*Math.max(0,Math.min(1,t2));
+    result.push([Math.cos(angle)*r, Math.sin(angle)*r]);
+  }
+  return result;
+}
+
+// Generate profile points for parametric (wave) profile
+function makeWaveProfile(ripple, amp, sharp, org, seed, samples=480) {
+  function hash(n){const x=Math.sin(n)*43758.5453;return x-Math.floor(x);}
+  const pts=[];
+  for(let i=0;i<samples;i++){
+    const theta = (i/samples)*2*Math.PI;
+    const rippleIdx = Math.floor((i/samples)*ripple)%ripple;
+    // Per-ripple organic scale
+    let scale=1;
+    if(org>0){
+      const h1=hash(rippleIdx*17.3+seed*0.007);
+      const h2=hash(rippleIdx*31.1+seed*0.013+0.5);
+      scale = 1*(1-org)+(0.3+h1*0.7)*(0.85+h2*0.3)*org;
+    }
+    let w = Math.sin(ripple*theta);
+    w = Math.sign(w)*Math.pow(Math.abs(w), 1-sharp*0.8);
+    const r = 1 + amp*w*(bw=>bw>0?scale:scale*0.5+0.5)(w>0?1:0);
+    pts.push([Math.cos(theta)*r, Math.sin(theta)*r]);
+  }
+  return pts;
+}
+
+// Generate polygon profile with vertex rounding (chamfered tips)
+// rounding=0: sharp polygon vertices; rounding=1: circle
+function makePolygonProfile(sides, rounding, samples=480) {
+  // Build the polygon as a series of keypoints, then sample
+  // Each side: two flat edge points + the vertex between them
+  // With rounding>0, each vertex is replaced by a circular arc
+
+  const segAngle = (2*Math.PI)/sides;
+  // Circumradius of the polygon (vertices touch unit circle)
+  const R = 1.0;
+  // Inradius (centre to edge midpoint)
+  const inR = R * Math.cos(Math.PI/sides);
+  // Arc radius at each vertex for the chamfer
+  // At rounding=0: arc radius=0 (sharp point)
+  // At rounding=1: arc fills the full corner, producing a circle
+  const maxArcR = R * Math.sin(Math.PI/sides); // max chamfer = half-edge at vertex
+  const arcR = rounding * maxArcR;
+
+  // For each vertex, compute the two tangent points where the arc meets the edges
+  // Then sample: straight edge → arc → straight edge → arc → ...
+  const keyPts = []; // [x, z, isArcCentre] — we'll store arc segments
+
+  for(let s=0; s<sides; s++){
+    const vAngle = s * segAngle - Math.PI/2; // vertex angle (start from top)
+    const vx = R * Math.cos(vAngle);
+    const vz = R * Math.sin(vAngle);
+
+    const nextAngle = (s+1)*segAngle - Math.PI/2;
+    const nx = R * Math.cos(nextAngle);
+    const nz = R * Math.sin(nextAngle);
+
+    if(arcR < 0.001){
+      // Sharp: just the vertex
+      keyPts.push({type:'pt', x:vx, z:vz});
+    } else {
+      // Direction vectors along the two edges meeting at this vertex
+      const prevAngle = (s-1)*segAngle - Math.PI/2;
+      const px2 = R*Math.cos(prevAngle), pz2=R*Math.sin(prevAngle);
+      // Edge from prev vertex to this vertex
+      const e1x=vx-px2, e1z=vz-pz2; const e1len=Math.sqrt(e1x*e1x+e1z*e1z);
+      const e1nx=e1x/e1len, e1nz=e1z/e1len; // normalised
+      // Edge from this vertex to next vertex
+      const e2x=nx-vx, e2z=nz-vz; const e2len=Math.sqrt(e2x*e2x+e2z*e2z);
+      const e2nx=e2x/e2len, e2nz=e2z/e2len;
+
+      // Tangent points along each edge from the vertex
+      // Distance from vertex to tangent point = arcR / tan(halfAngle)
+      // Half angle at vertex
+      const dot = e1nx*e2nx + e1nz*e2nz;
+      const halfAngle = Math.acos(Math.max(-1,Math.min(1,dot)))/2;
+      const tanDist = halfAngle > 0.001 ? Math.min(arcR/Math.tan(halfAngle), e1len*0.45) : 0;
+
+      // Tangent point on incoming edge (just before vertex)
+      const t1x = vx - e1nx*tanDist, t1z = vz - e1nz*tanDist;
+      // Tangent point on outgoing edge (just after vertex)
+      const t2x = vx + e2nx*tanDist, t2z = vz + e2nz*tanDist;
+
+      // Arc centre: perpendicular from each tangent point, inward
+      // The arc centre is at distance arcR inward from each tangent point
+      // Inward direction at vertex = toward polygon centre = -(vx,vz)/R
+      const inx = -vx/R, inz = -vz/R;
+      // Bisector direction (average of inward normals of both edges)
+      // For a regular polygon this is just the inward direction from the vertex
+      const cx2 = vx + inx*(arcR/Math.sin(halfAngle > 0.001 ? halfAngle : 0.01));
+      const cz2 = vz + inz*(arcR/Math.sin(halfAngle > 0.001 ? halfAngle : 0.01));
+
+      keyPts.push({type:'pt',  x:t1x, z:t1z});
+      keyPts.push({type:'arc', cx:cx2, cz:cz2, r:arcR, 
+                   aStart:Math.atan2(t1z-cz2, t1x-cx2),
+                   aEnd:  Math.atan2(t2z-cz2, t2x-cx2)});
+      keyPts.push({type:'pt',  x:t2x, z:t2z});
+    }
+  }
+
+  // Now sample `samples` points evenly by arc-length estimate
+  // First build a fine polyline from keyPts
+  const polyline=[];
+  for(let i=0;i<keyPts.length;i++){
+    const kp=keyPts[i];
+    if(kp.type==='pt'){
+      polyline.push([kp.x,kp.z]);
+    } else {
+      // Arc: sample 16 points
+      let a0=kp.aStart, a1=kp.aEnd;
+      // Ensure we go around the short way (inward)
+      // The arc at a vertex goes from t1 to t2 rounding the tip
+      // We need to go the way that cuts the corner (toward centre)
+      // Determine angular direction: the arc should go inward (shorter arc)
+      let da = a1-a0;
+      // Normalise to [-π, π]
+      while(da > Math.PI) da -= 2*Math.PI;
+      while(da < -Math.PI) da += 2*Math.PI;
+      const arcSteps=16;
+      for(let j=0;j<=arcSteps;j++){
+        const u=j/arcSteps;
+        const a=a0+da*u;
+        polyline.push([kp.cx+Math.cos(a)*kp.r, kp.cz+Math.sin(a)*kp.r]);
+      }
+    }
+  }
+
+  // Resample polyline to `samples` points by arc-length
+  const cumLen=[0];
+  for(let i=1;i<polyline.length;i++){
+    const dx=polyline[i][0]-polyline[i-1][0];
+    const dz=polyline[i][1]-polyline[i-1][1];
+    cumLen.push(cumLen[i-1]+Math.sqrt(dx*dx+dz*dz));
+  }
+  const totalLen=cumLen[cumLen.length-1];
+  const result=[];
+  for(let i=0;i<samples;i++){
+    const target=(i/samples)*totalLen;
+    let lo=0,hi=polyline.length-1;
+    for(let j=0;j<polyline.length-1;j++){if(cumLen[j]<=target&&cumLen[j+1]>target){lo=j;hi=j+1;break;}}
+    const seg2=cumLen[hi]-cumLen[lo];
+    const tt=seg2>0?(target-cumLen[lo])/seg2:0;
+    result.push([
+      polyline[lo][0]+(polyline[hi][0]-polyline[lo][0])*tt,
+      polyline[lo][1]+(polyline[hi][1]-polyline[lo][1])*tt
+    ]);
+  }
+
+  // Normalise to unit max radius
+  let maxR=0;
+  result.forEach(([x,z])=>maxR=Math.max(maxR,Math.sqrt(x*x+z*z)));
+  return result.map(([x,z])=>[x/(maxR||1),z/(maxR||1)]);
+}
+
+// Generate ellipse profile
+function makeEllipseProfile(wr, hr, samples=480) {
+  const pts=[];
+  for(let i=0;i<samples;i++){
+    const theta=(i/samples)*2*Math.PI;
+    pts.push([Math.cos(theta)*wr, Math.sin(theta)*hr]);
+  }
+  let maxR=0;
+  pts.forEach(([x,z])=>maxR=Math.max(maxR,Math.sqrt(x*x+z*z)));
+  return pts.map(([x,z])=>[x/maxR,z/maxR]);
+}
+
+// Morph between two profile point arrays (both length=samples)
+// method: 'linear' (option A) or 'match' (option B — match by angle)
+function morphProfiles(pA, pB, t, method) {
+  if(t<=0) return pA;
+  if(t>=1) return pB;
+  if(method==='match'){
+    // Match-point: interpolate radius at each angular sample position
+    return pA.map(([ax,az],i)=>{
+      const[bx,bz]=pB[i];
+      const ra=Math.sqrt(ax*ax+az*az), rb=Math.sqrt(bx*bx+bz*bz);
+      const angle=Math.atan2(az,ax);
+      const r=ra+(rb-ra)*t;
+      return[Math.cos(angle)*r, Math.sin(angle)*r];
+    });
+  }
+  // Linear (default): direct x,z interpolation — allows full shape morphing
+  return pA.map(([ax,az],i)=>{
+    const[bx,bz]=pB[i];
+    return[ax+(bx-ax)*t, az+(bz-az)*t];
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// STOCK SVG PROFILES — embedded path data
+// ═══════════════════════════════════════════════════════════════════
+const SVG_PATHS = {
+  p1: { d: `M-23.6123,97.1723 C-25.5419,96.9309 -27.0354,95.5226 -27.6606,93.2767 C-28.3127,91.0376 -28.0995,87.9771 -27.4308,84.584 C-26.7729,81.1925 -25.7005,77.4764 -24.8652,73.9774 C-24.0245,70.475 -23.4576,67.1998 -23.7142,64.5962 C-23.9501,61.9841 -25.0174,60.0555 -26.8125,59.0356 C-28.5981,58.0024 -31.0714,57.8809 -33.8858,58.5156 C-36.7031,59.1401 -39.8557,60.5077 -43.1151,62.1857 C-46.3751,63.8603 -49.7489,65.8319 -53.0009,67.5812 C-56.2515,69.3338 -59.3863,70.8498 -62.1524,71.6988 C-64.9147,72.5581 -67.3047,72.7391 -68.9337,72.0985 C-70.5695,71.4691 -71.4069,70.0281 -71.2239,67.9599 C-71.0608,65.896 -69.8742,63.2167 -68.0584,60.1964 C-66.2529,57.1776 -63.8475,53.8201 -61.4925,50.4488 C-59.1366,47.077 -56.8505,43.6961 -55.2685,40.6136 C-53.6741,37.5286 -52.81,34.746 -52.9795,32.5075 C-53.1312,30.2629 -54.3037,28.5746 -56.25,27.5279 C-58.1913,26.4706 -60.8817,26.0555 -63.9904,26.0521 C-67.0984,26.0429 -70.6271,26.4295 -74.22,26.8287 C-77.812,27.2291 -81.4661,27.6306 -84.7981,27.6833 C-88.1293,27.7438 -91.1424,27.4375 -93.4452,26.6108 C-95.7498,25.7963 -97.3209,24.4709 -97.7565,22.8697 C-98.2087,21.2691 -97.5036,19.4178 -95.7533,17.5341 C-94.0188,15.6458 -91.2579,13.7244 -88.0173,11.8549 C-84.7828,9.98219 -81.0886,8.15782 -77.6404,6.38442 C-74.1885,4.60911 -71.0023,2.8826 -68.6912,1.15465 C-66.3669,-0.573882 -64.9353,-2.30679 -64.6397,-4.10995 C-64.3264,-5.9124 -65.1461,-7.78723 -66.8374,-9.77973 C-68.5172,-11.7703 -71.0512,-13.8818 -73.8683,-16.1106 C-76.682,-18.336 -79.7628,-20.6793 -82.4465,-23.0408 C-85.135,-25.3979 -87.4098,-27.7806 -88.736,-29.9895 C-90.0751,-32.194 -90.45,-34.2082 -89.6783,-35.6551 C-88.9236,-37.1119 -87.0248,-37.9726 -84.289,-38.1616 C-81.5643,-38.3648 -78.0211,-37.9059 -74.2631,-37.118 C-70.5073,-36.3362 -66.5537,-35.2437 -63.0639,-34.3274 C-59.5675,-33.4092 -56.5535,-32.6828 -54.5075,-32.5918 C-52.4462,-32.4911 -51.3671,-33.0404 -51.3329,-34.4115 C-51.2814,-35.7696 -52.2667,-37.947 -53.8557,-40.7414 C-55.436,-43.5268 -57.5961,-46.918 -59.6697,-50.4774 C-61.7454,-54.0333 -63.7163,-57.7456 -64.9816,-61.0776 C-66.2596,-64.4118 -66.8038,-67.3578 -66.3289,-69.45 C-65.8752,-71.5509 -64.41,-72.7726 -62.3036,-72.8442 C-60.2028,-72.9376 -57.5018,-71.867 -54.694,-70.0111 C-51.8803,-68.171 -48.965,-65.5776 -46.2537,-63.0522 C-43.5379,-60.5253 -41.0208,-58.1007 -38.8979,-56.5509 C-36.7717,-54.9824 -35.0381,-54.3272 -33.7946,-54.8719 C-32.5463,-55.3914 -31.7993,-57.0801 -31.5505,-59.4115 C-31.2916,-61.7438 -31.5328,-64.6742 -31.9545,-67.8076 C-32.3721,-70.9457 -32.9496,-74.3009 -33.2641,-77.5922 C-33.5837,-80.883 -33.6239,-84.1176 -33.1003,-87.0054 C-32.5909,-89.8877 -31.4956,-92.4369 -29.9047,-94.2215 C-28.3275,-96.0056 -26.2946,-96.9768 -24.3791,-96.5801 C-22.4509,-96.2106 -20.6779,-94.4406 -19.173,-91.5876 C-17.6566,-88.7553 -16.3818,-84.8802 -15.1598,-80.8199 C-13.9368,-76.7631 -12.7502,-72.5512 -11.3902,-69.1363 C-10.0395,-65.7079 -8.4861,-63.1161 -6.74738,-61.966 C-5.02157,-60.7891 -3.14498,-61.0576 -1.61572,-62.576 C-0.0722012,-64.0775 1.08001,-66.7963 1.84438,-70.0964 C2.62304,-73.3921 3.04429,-77.2508 3.5038,-80.9273 C3.96225,-84.6073 4.48817,-88.0908 5.44047,-90.7241 C6.37648,-93.3689 7.77371,-95.1458 9.56862,-95.7063 C11.3459,-96.2843 13.4701,-95.6441 15.242,-93.9393 C17.0312,-92.2475 18.4175,-89.5073 19.327,-86.2231 C20.2527,-82.9442 20.7349,-79.1362 21.1144,-75.4439 C21.4965,-71.7497 21.7988,-68.1848 22.438,-65.3418 C23.0665,-62.4898 24.0635,-60.3752 25.5692,-59.3504 C27.0596,-58.3098 29.031,-58.3687 31.1048,-59.4381 C33.185,-60.4921 35.3351,-62.5448 37.4478,-65.0672 C39.5666,-67.5833 41.668,-70.5475 43.7928,-73.2648 C45.915,-75.9858 48.0781,-78.4403 50.2603,-80.0319 C52.4309,-81.6375 54.6361,-82.3594 56.5268,-81.9796 C58.4133,-81.6172 59.929,-80.1672 60.5077,-77.9386 C61.1114,-75.7151 60.7487,-72.736 59.6779,-69.4072 C58.6235,-66.0786 56.903,-62.4031 55.184,-58.8035 C53.4656,-55.2015 51.7743,-51.6817 50.7991,-48.5992 C49.8085,-45.5118 49.5733,-42.8664 50.3866,-40.8846 C51.1766,-38.894 52.9905,-37.5784 55.3696,-36.9334 C57.7489,-36.2762 60.6505,-36.2868 63.7129,-36.5974 C66.78,-36.9029 70.0217,-37.4866 73.2044,-37.8468 C76.3855,-38.212 79.5183,-38.3356 82.3225,-37.8543 C85.1189,-37.3882 87.6036,-36.2927 89.3035,-34.5978 C91.0025,-32.9189 91.8524,-30.6774 91.205,-28.449 C90.593,-26.2107 88.4432,-24.0248 85.2538,-22.0864 C82.0882,-20.1371 77.944,-18.4142 73.9425,-16.8311 C69.9384,-15.2456 66.1248,-13.785 63.5507,-12.2981 C60.9472,-10.8174 59.6449,-9.29042 59.9238,-7.7262 C60.1654,-6.16911 61.9281,-4.60211 64.2634,-3.31153 C66.6084,-2.00989 69.4497,-1.00891 72.2988,-0.206433 C75.1619,0.603679 78.0654,1.2415 80.882,2.0085 C83.7004,2.77236 86.4494,3.68194 89.0439,4.94483 C91.6282,6.19398 94.0933,7.82742 96.118,9.71488 C98.1301,11.5861 99.6506,13.6674 99.8374,15.2335 C100.051,16.8175 98.8665,17.8294 96.3119,18.162 C93.7855,18.5152 89.9268,18.2208 85.5326,17.7358 C81.1473,17.2555 76.2629,16.6124 71.9042,16.3722 C67.5356,16.1215 63.7351,16.3128 61.2847,17.2642 C58.8078,18.1939 57.6944,19.8699 57.9412,21.9006 C58.1678,23.9312 59.7244,26.2669 62.0594,28.5775 C64.388,30.8974 67.472,33.2004 70.6,35.4372 C73.7304,37.6761 76.8914,39.862 79.4372,41.9837 C81.9941,44.1012 83.9115,46.1735 84.8221,48.1102 C85.751,50.0378 85.6794,51.8169 84.8073,53.0251 C83.9403,54.2415 82.3085,54.8464 80.2262,54.675 C78.1401,54.5201 75.6008,53.5951 72.7806,52.2215 C69.962,50.8563 66.852,49.063 63.6933,47.3758 C60.5413,45.689 57.3226,44.1224 54.4189,43.2237 C51.5212,42.3163 48.9804,42.1 47.4792,42.9001 C45.9535,43.6826 45.5156,45.4875 46.0541,48.1272 C46.5695,50.7536 48.0208,54.1971 49.6513,57.9118 C51.2797,61.6218 53.0475,65.586 54.1583,69.1314 C55.2877,72.6807 55.7102,75.7943 55.0944,77.9031 C54.5074,80.0257 52.9161,81.1185 50.9408,80.9731 C48.9616,80.8499 46.6579,79.4882 44.4132,77.3361 C42.1579,75.1972 39.9462,72.2968 37.8823,69.4338 C35.8153,66.5708 33.8781,63.7702 32.0803,61.8287 C30.2871,59.8738 28.6266,58.8067 27.2625,59.0686 C25.8962,59.3063 24.8603,60.8818 24.2939,63.5449 C23.7129,66.1889 23.6017,69.894 23.6157,73.8733 C23.626,77.8482 23.7331,82.0682 23.5383,85.645 C23.3523,89.2323 22.832,92.1411 21.7657,93.7433 C20.7197,95.3706 19.1327,95.68 17.4559,94.7831 C15.7784,93.9026 14.0752,91.8556 12.7653,89.217 C11.4366,86.5784 10.4995,83.3657 9.76904,80.0952 C9.03205,76.823 8.47119,73.4918 7.77341,70.5983 C7.08149,67.7016 6.22209,65.2441 4.99291,63.6162 C3.77931,61.9827 2.20775,61.1951 0.613972,61.5375 C-0.984137,61.8634 -2.55837,63.3353 -3.95095,65.7477 C-5.35509,68.1453 -6.59204,71.4647 -7.85506,75.0899 C-9.11904,78.7107 -10.4286,82.6166 -11.9726,86.0814 C-13.5077,89.5519 -15.3064,92.5592 -17.3635,94.5242 C-19.4023,96.5052 -21.689,97.4296 -23.6123,97.1723`, cx:0, cz:0, label:'Organic Star' },
+};
+
+// Pre-parse stock profiles (will be done on init)
+const STOCK_PROFILES = {};
+
+// Resample a profile to exactly N points using angular interpolation
+function resampleProfile(pts, N) {
+  if(pts.length===N) return pts;
+  const polar=pts.map(([x,z])=>({a:Math.atan2(z,x),r:Math.sqrt(x*x+z*z)}));
+  polar.sort((a,b)=>a.a-b.a);
+  const result=[];
+  for(let i=0;i<N;i++){
+    const angle=-Math.PI+(i/N)*2*Math.PI;
+    let lo=polar.length-1,hi=0;
+    for(let j=0;j<polar.length;j++){if(polar[j].a<=angle){lo=j;hi=(j+1)%polar.length;}}
+    const a0=polar[lo].a,a1=polar[hi].a+(polar[hi].a<polar[lo].a?2*Math.PI:0);
+    const tt=(a1-a0)>0.0001?(angle+(angle<a0?2*Math.PI:0)-a0)/(a1-a0):0;
+    const r=polar[lo].r+(polar[hi].r-polar[lo].r)*Math.max(0,Math.min(1,tt));
+    result.push([Math.cos(angle)*r,Math.sin(angle)*r]);
+  }
+  return result;
+}
+
+function getProfilePoints(profileDef, samples=480) {
+  switch(profileDef.type) {
+    case 'svg_stock': { const pts=STOCK_PROFILES[profileDef.key]; return pts ? resampleProfile(pts,samples) : makeEllipseProfile(1,1,samples); }
+    case 'svg_user':  return profileDef.points || makeEllipseProfile(1,1,samples);
+    case 'wave':      return makeWaveProfile(profileDef.ripple,profileDef.amp/100,profileDef.sharp/100,profileDef.org/100,profileDef.seed,samples);
+    case 'polygon':   return makePolygonProfile(profileDef.sides,profileDef.rounding/100,samples);
+    case 'ellipse':   return makeEllipseProfile(profileDef.ew/100,profileDef.eh/100,samples);
+    default:          return makeEllipseProfile(1,1,samples);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+const SAMPLES = 480;
+
+function defaultZone(type) {
+  return {
+    scale: type==='bot'?60:type==='mid'?70:80, // % of height
+    twist: 0,   // degrees (progressive from previous zone)
+    twistAcc: 0,
+    profile: { type:'wave', ripple:12, amp:10, sharp:20, org:0, seed:Math.floor(Math.random()*9999) }
+  };
+}
+
+const state = {
+  height: 200,
+  wall: 2.5,
+  baseThick: 3.0,
+  midPos: 0.5,
+  blend: 50,
+  morphMatch: false,
+  phase: 0,
+  bot: defaultZone('bot'),
+  mid: defaultZone('mid'),
+  top: defaultZone('top'),
+  resolution: 'standard',
+  showFloor: true,
+  showXS: false,
+  seed: Math.floor(Math.random()*99999),
+  topAdj: {
+    tilt: 0,
+    curve: 2,
+    mode: 'linear'
+  },
+  waves: {
+    enabled: false,
+    linked: true,
+    activeTab: 'top',
+    top: { ripple:12, amp:6,  sharp:20, org:0, shape:'sine' },
+    bot: { ripple:12, amp:6,  sharp:20, org:0, shape:'sine' },
+  },
+};
+state.bot.scale=60; state.mid.scale=70; state.top.scale=80;
+state.top.profile.amp=14; state.mid.profile.amp=8; state.bot.profile.amp=2;
+
+const RES={draft:{V:160,A:360},standard:{V:320,A:480},fine:{V:600,A:720}};
+// Export resolutions (independent of viewport — see spec §4.5)
+const EXPORT_RES={coarse:{V:160,A:360},medium:{V:320,A:480},fine:{V:600,A:720}};
+// Recommended wall-thickness band (typical FDM solid-wall, in mm)
+const WALL_REC_MIN=1.2, WALL_REC_MAX=2.4;
+let activeZone='bot';
+const undoStack=[],redoStack=[];
+let regenTimer=null;
+
+// ═══════════════════════════════════════════════════════════════════
+// THREE.JS
+// ═══════════════════════════════════════════════════════════════════
+const canvas=document.getElementById('three-canvas');
+const container=document.getElementById('vp');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.0;
+renderer.localClippingEnabled=true;
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0F1117);
+
+const camera=new THREE.PerspectiveCamera(45,1,0.1,5000);
+const DEF_CAM=new THREE.Vector3(0,120,380);
+camera.position.copy(DEF_CAM);
+
+const orb=new OrbitControls(camera,renderer.domElement);
+orb.target.set(0,100,0);
+orb.enableDamping=true; orb.dampingFactor=0.08;
+orb.minDistance=50; orb.maxDistance=2000;
+orb.update();
+
+scene.add(new THREE.AmbientLight(0xffffff,0.4));
+const dL1=new THREE.DirectionalLight(0xffffff,0.8);
+dL1.position.set(-200,300,200); dL1.castShadow=true; scene.add(dL1);
+const dL2=new THREE.DirectionalLight(0x4488ff,0.3);
+dL2.position.set(200,-100,-200); scene.add(dL2);
+
+const grid=new THREE.GridHelper(600,30,0x1E90FF,0x1E2130);
+grid.material.opacity=0.4; grid.material.transparent=true; scene.add(grid);
+const shadowPlane=new THREE.Mesh(new THREE.PlaneGeometry(600,600),new THREE.ShadowMaterial({opacity:0.25}));
+shadowPlane.rotation.x=-Math.PI/2; shadowPlane.receiveShadow=true; scene.add(shadowPlane);
+
+const xsPlane=new THREE.Plane(new THREE.Vector3(0,-1,0),0);
+const vaseMat=new THREE.MeshStandardMaterial({color:0xC0C0C8,roughness:0.55,metalness:0.1,side:THREE.DoubleSide});
+let vaseMesh=null;
+let lastMinOuterR=Infinity; // min outer radius from last buildGeometry — drives wall-thickness warning
+
+// ═══════════════════════════════════════════════════════════════════
+// BLEND ENGINE
+// ═══════════════════════════════════════════════════════════════════
+function smoothstep(e0,e1,x){const t=Math.max(0,Math.min(1,(x-e0)/(e1-e0)));return t*t*(3-2*t);}
+
+function zoneWeightsAt(t,s){
+  // Three control points: bot at t=0, mid at t=midPos, top at t=1
+  // Use quadratic Bernstein basis (proper barycentric blend):
+  // Map t into a normalised parameter u across the three keyframes
+  // such that u=0→bot, u=0.5→mid, u=1→top
+  const mp = s.midPos;
+  // Remap t: piecewise linear mapping so that t=0→u=0, t=mp→u=0.5, t=1→u=1
+  let u;
+  if(t <= mp) {
+    u = mp > 0 ? (t / mp) * 0.5 : 0;
+  } else {
+    u = (1 - mp) > 0 ? 0.5 + ((t - mp) / (1 - mp)) * 0.5 : 1;
+  }
+  // Apply blend softness: blend=100 → full smooth curve; blend=5 → near-hard steps
+  // Squish u toward its nearest keyframe using a power curve
+  // Higher blend = gentler (power closer to 1); lower = steeper (power > 1)
+  const softness = s.blend / 100; // 0=hard step, 1=fully smooth
+  // Within each half, apply smoothstep for additional softening
+  let us;
+  if(u <= 0.5) {
+    const u2 = u / 0.5; // 0→1 in first half
+    const eased = smoothstep(0, 1, u2);
+    us = eased * 0.5;
+  } else {
+    const u2 = (u - 0.5) / 0.5; // 0→1 in second half
+    const eased = smoothstep(0, 1, u2);
+    us = 0.5 + eased * 0.5;
+  }
+  // Blend between sharp (u) and smooth (us) based on softness
+  const uf = u * (1 - softness) + us * softness;
+  // Quadratic Bernstein weights: B0=(1-uf)^2, B1=2*uf*(1-uf), B2=uf^2
+  const wBot = (1 - uf) * (1 - uf);
+  const wMid = 2 * uf * (1 - uf);
+  const wTop = uf * uf;
+  return {wBot, wMid, wTop};
+}
+
+// Get interpolated cross-section points at height t
+function crossSectionAt(t, s, profilePtsCache) {
+  const {wBot,wMid,wTop}=zoneWeightsAt(t,s);
+  const method=s.morphMatch?'match':'linear';
+
+  // Progressive twist:
+  // bot = 0 (reference), mid twist accumulates from bot, top accumulates from mid
+  const midTwistDeg = s.mid.twist;
+  const topTwistDeg = s.mid.twist + s.top.twist;
+  // Twist acceleration: squeeze the twist curve upward (higher acc = twists faster near top)
+  const tAcc = Math.pow(t, 1 + (s.top.twistAcc||0)/100);
+  const tAccMid = Math.pow(t, 1 + (s.mid.twistAcc||0)/100);
+  // Weighted twist at this height
+  const twist = (midTwistDeg * wMid * tAccMid + topTwistDeg * wTop * tAcc) + s.phase;
+
+  // PROFILE MORPH: middle zone has no profile — pure bot→top linear morph
+  const pBot=profilePtsCache.bot, pTop=profilePtsCache.top;
+  // Parameter for bot→top morph: when wTop=0 we're all-bot, when wBot=0 we're all-top
+  const morphT = wBot+wTop > 0 ? wTop/(wBot+wTop) : 0;
+  const morphed = morphProfiles(pBot, pTop, morphT, method);
+
+  // SCALE: bot and top radii define the envelope; mid scale adds a bulge/pinch
+  const H = s.height;
+  const rBot = (s.bot.scale/100)*H/2;
+  const rTop = (s.top.scale/100)*H/2;
+  // Linear interpolation of bot→top radius at this height
+  const rLinear = rBot*wBot/(wBot+wTop||1) + rTop*wTop/(wBot+wTop||1);
+  // Mid scale: 50% = neutral, >50% = bulge, <50% = pinch
+  // The bulge/pinch is proportional to wMid (how much we're in the mid zone)
+  // and the deviation of mid.scale from 50%
+  const midScaleFactor = (s.mid.scale - 50) / 50; // -1 to +1
+  const midRadius = (s.mid.scale/100)*H/2;
+  // Blend: at wMid=0 we use rLinear, at wMid=1 we use midRadius (pure bulge/pinch)
+  const radius = rLinear*(1-wMid) + midRadius*wMid;
+
+  // Apply radius scaling and twist rotation
+  const twistRad=(twist*Math.PI/180);
+  const pts = morphed.map(([px,pz])=>{
+    const r=Math.sqrt(px*px+pz*pz)*radius;
+    const a=Math.atan2(pz,px)+twistRad;
+    return[Math.cos(a)*r, Math.sin(a)*r];
+  });
+
+  // WAVE MODULATION (Phase 2) — radial ripple overlay
+  if(s.waves && s.waves.enabled){
+    const wTop2 = s.waves.linked ? s.waves.top : s.waves.top;
+    const wBot2 = s.waves.linked ? s.waves.top : s.waves.bot;
+    // Blend wave params across height using zone weights
+    const blend01 = wBot+wTop > 0 ? wTop/(wBot+wTop) : 0; // 0=bottom, 1=top
+    const wP = {
+      ripple: wBot2.ripple*(1-blend01) + wTop2.ripple*blend01,
+      amp:    wBot2.amp   *(1-blend01) + wTop2.amp   *blend01,
+      sharp:  wBot2.sharp *(1-blend01) + wTop2.sharp *blend01,
+      org:    wBot2.org   *(1-blend01) + wTop2.org   *blend01,
+      shape:  blend01 > 0.5 ? wTop2.shape : wBot2.shape,
+    };
+    // Seeded organicness: use fixed per-ripple random offsets based on seed
+    const seedRng = (n) => {
+      // Simple deterministic hash of seed+n
+      let x = Math.sin(s.seed * 9301 + n * 49297 + 233720) * 1e6;
+      return x - Math.floor(x);
+    };
+    return pts.map(([px,pz], ai)=>{
+      const angle = Math.atan2(pz,px); // -π to π
+      const normAngle = (angle + Math.PI) / (2*Math.PI); // 0→1
+      const r0 = Math.sqrt(px*px+pz*pz);
+      // Base wave value at this angle
+      const wave = waveFunc(normAngle, wP.ripple, wP.sharp, wP.org, wP.shape, seedRng);
+      // Displacement: amp% of local radius
+      const disp = (wP.amp/100) * r0 * wave;
+      const newR = Math.max(1, r0 + disp);
+      const a2 = Math.atan2(pz,px);
+      return [Math.cos(a2)*newR, Math.sin(a2)*newR];
+    });
+  }
+
+  return pts;
+}
+
+// Wave function: returns -1 to +1 ripple value at normalised angle u (0→1)
+// ripple = number of peaks, sharp = 0 rounded / 100 angular, org = organicness
+// shape = 'sine'|'cosine'|'sawtooth'|'softsaw'
+function waveFunc(u, ripple, sharp, org, shape, seedRng){
+  const rip = Math.max(1, Math.round(ripple));
+  // Base wave
+  const theta = u * 2 * Math.PI * rip;
+  let base;
+  if(shape==='cosine')       base = Math.cos(theta);
+  else if(shape==='sawtooth') base = 1 - 2*(u*rip % 1); // -1 to +1 sawtooth
+  else if(shape==='softsaw')  base = Math.sin(theta) * 0.7 + Math.cos(theta*2)*0.3;
+  else                        base = Math.sin(theta); // default sine
+
+  // Sharpness: raise to odd power to keep sign, sharpen peaks
+  if(sharp > 0){
+    const sp = 1 + (sharp/100)*3; // power 1→4
+    base = Math.sign(base) * Math.pow(Math.abs(base), 1/sp);
+  }
+
+  // Organicness: blend in per-ripple random amplitude variation
+  if(org > 0 && seedRng){
+    const ripIdx = Math.floor(u * rip); // which ripple peak we're in
+    const ampVar = 0.4 + seedRng(ripIdx) * 1.2; // 0.4→1.6 variation
+    const phaseVar = (seedRng(ripIdx+100) - 0.5) * 0.4; // slight phase shift
+    // Recompute with variation
+    const thetaV = (u + phaseVar/rip) * 2*Math.PI*rip;
+    let varWave;
+    if(shape==='cosine') varWave=Math.cos(thetaV)*ampVar;
+    else if(shape==='sawtooth') varWave=(1-2*((u+phaseVar/rip)*rip%1))*ampVar;
+    else varWave=Math.sin(thetaV)*ampVar;
+    base = base*(1-org/100) + varWave*(org/100);
+  }
+
+  return base; // -1 to +1
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MESH GENERATION
+// ═══════════════════════════════════════════════════════════════════
+function buildGeometry(s) {
+  const {V,A}=RES[s.resolution]||EXPORT_RES[s.resolution];
+  const PROF_SAMPLES=A+1; // match angular resolution
+
+  // Pre-compute profile point arrays (resampled to A+1 points)
+  const profilePtsCache={
+    bot: getProfilePoints(s.bot.profile, A+1),
+    mid: getProfilePoints(s.mid.profile, A+1),
+    top: getProfilePoints(s.top.profile, A+1),
+  };
+
+  const H=s.height, wallT=s.wall, baseT=s.baseThick;
+  let minRO=Infinity; // track thinnest outer radius for wall-thickness guidance
+  const positions=[],normals=[],indices=[];
+
+  // TOP SURFACE TILT — dome/bowl effect applied over top 30% of vase height
+  // The tilt deforms the entire upper zone as a curved surface pushed from the centre.
+  // Positive tilt: centre pushed UP (dome / convex top).
+  // Negative tilt: centre pushed DOWN (bowl / concave top, walls flare out naturally).
+  // Every ring in the zone is shifted so walls stay fully connected.
+  const doTilt = s.topAdj && s.topAdj.tilt !== 0;
+  const tiltAmt  = doTilt ? s.topAdj.tilt / 100 : 0; // -1 to +1
+  const tiltPow  = doTilt ? ((s.topAdj.mode==='curved') ? Math.max(1.01, s.topAdj.curve||2) : 1) : 1;
+  const maxDisp  = H * 0.25; // max vertical displacement = 25% of vase height
+  const tiltZone = 0.30;     // tilt affects top 30% of height
+
+  // Max outer radius at top (for normalising radial position)
+  let tiltMaxR = 1;
+  if(doTilt){
+    crossSectionAt(1, s, profilePtsCache).forEach(([px,pz])=>{
+      const r=Math.sqrt(px*px+pz*pz); if(r>tiltMaxR) tiltMaxR=r;
+    });
+    if(tiltMaxR<0.001) tiltMaxR=1;
+  }
+
+  // Helper: given normalised radius (0=centre,1=outer edge) and tiltAmt,
+  // return the radial displacement profile f(normR).
+  // tilt>0 (dome): centre pushed up most, edge stays → f = (1-normR^pow)
+  // tilt<0 (bowl): centre pushed down most, edge stays → same shape, sign inverted
+  // Result: dy = tiltAmt * (1 - normR^pow) * zoneProgress * maxDisp
+  // At normR=0 (centre): dy = tiltAmt * p * maxDisp   (full displacement)
+  // At normR=1 (edge):   dy = 0                        (edge anchored)
+  // This means positive tilt domes the surface UP from centre.
+  // Negative tilt pushes centre DOWN — walls near centre lean inward at top,
+  // producing a natural bowl/concave opening. Edge stays put.
+
+  // Height levels
+  const outerV=[],innerV=[];
+  for(let vi=0;vi<=V;vi++){
+    const t=vi/V, y=t*H;
+    const cs=crossSectionAt(t,s,profilePtsCache);
+    outerV.push([]); innerV.push([]);
+
+    // Zone progress: 0 below tilt zone, smoothly 0→1 within top tiltZone
+    const tZoneStart = 1 - tiltZone;
+    const rawP = (t - tZoneStart) / tiltZone; // <0 below zone, 0→1 in zone
+    // Smooth ease-in so transition is seamless (no crease at zone entry)
+    const p = doTilt && rawP > 0 ? smoothstep(0, 1, rawP) : 0;
+
+    for(let ai=0;ai<=A;ai++){
+      const ai2=ai%A;
+      const[px,pz]=cs[ai2];
+      const rO=Math.sqrt(px*px+pz*pz);
+      if(rO<minRO)minRO=rO;
+      const rI=Math.max(5,rO-wallT);
+      const nx2=px/(rO||1), nz2=pz/(rO||1);
+
+      let dy=0;
+      if(doTilt && p>0){
+        // Radial shape function: 1 at centre, 0 at outer edge
+        const normR  = Math.min(1, rO / tiltMaxR);
+        const shape  = 1 - Math.pow(normR, tiltPow);
+        dy = tiltAmt * shape * p * maxDisp;
+      }
+
+      outerV[vi].push([px,        y + dy, pz]);
+      innerV[vi].push([nx2*rI,    y + dy, nz2*rI]);
+    }
+  }
+
+  function addStrip(verts,flip){
+    for(let vi=0;vi<V;vi++) for(let ai=0;ai<A;ai++){
+      const p00=verts[vi][ai],p10=verts[vi][ai+1],p01=verts[vi+1][ai],p11=verts[vi+1][ai+1];
+      const b=positions.length/3;
+      for(const p of[p00,p10,p11,p01]){positions.push(p[0],p[1],p[2]);normals.push(0,0,0);}
+      if(!flip) indices.push(b,b+1,b+2,b,b+2,b+3);
+      else      indices.push(b,b+2,b+1,b,b+3,b+2);
+    }
+  }
+  addStrip(outerV,false);
+  addStrip(innerV,true);
+
+  // BASE — fills upward inside the vase from y=0 to y=baseThick
+  // The inner wall of the vase at the base level defines the plug edge.
+  // We need the inner profile at the base level for the plug top face.
+  // innerV[0] = inner wall at y=0 (bottom of vase)
+  // We build an inner plug at y=baseThick by scaling down innerV[0] slightly
+  // (same shape, inset by wall thickness so it sits flush)
+  // Actually: the plug top is simply the same inner profile at y=baseThick —
+  // we get this by sampling crossSectionAt a small t above 0.
+
+  // Build plug top points: inner wall profile at y=baseThick
+  // Use the same inner wall logic applied at t=baseThick/H
+  const plugT = Math.min(baseT/H, 0.02); // normalised height of plug top
+  const plugCS = crossSectionAt(plugT, s, profilePtsCache);
+  const plugInner = plugCS.map(([px,pz])=>{
+    const rO=Math.sqrt(px*px+pz*pz);
+    const rI=Math.max(3,rO-wallT);
+    const nx2=px/(rO||1), nz2=pz/(rO||1);
+    return [nx2*rI, baseT, nz2*rI];
+  });
+
+  for(let ai=0;ai<A;ai++){
+    const oB0=outerV[0][ai],  oB1=outerV[0][ai+1];
+    const iB0=innerV[0][ai],  iB1=innerV[0][ai+1];
+    const pI0=plugInner[ai],  pI1=plugInner[ai+1];
+
+    // 1. Bottom face — flat disc at y=0, from outer edge inward to centre
+    //    Outer ring quad (outer wall bottom to inner wall bottom, facing down)
+    let b=positions.length/3;
+    for(const p of[oB0,oB1,iB1,iB0]){positions.push(p[0],p[1],p[2]);normals.push(0,-1,0);}
+    indices.push(b,b+2,b+1, b,b+3,b+2);
+    // Centre triangle fill at y=0 (solid disc)
+    b=positions.length/3;
+    positions.push(0,0,0);normals.push(0,-1,0);
+    positions.push(iB1[0],0,iB1[2]);normals.push(0,-1,0);
+    positions.push(iB0[0],0,iB0[2]);normals.push(0,-1,0);
+    indices.push(b,b+2,b+1);
+
+    // 2. Plug inner wall — vertical ring inside the vase from y=0 to y=baseThick
+    //    Follows the inner profile, going upward
+    b=positions.length/3;
+    for(const p of[iB0,iB1,pI1,pI0]){positions.push(p[0],p[1],p[2]);normals.push(0,0,0);}
+    indices.push(b,b+2,b+1, b,b+3,b+2);
+
+    // 3. Plug top face — built as a fan AFTER the loop (see below)
+  }
+  // Plug top cap: fan from centroid of plugInner to each edge pair
+  {
+    let cx=0,cz=0;
+    for(let ai=0;ai<A;ai++){cx+=plugInner[ai][0];cz+=plugInner[ai][2];}
+    cx/=A; cz/=A;
+    for(let ai=0;ai<A;ai++){
+      const pI0=plugInner[ai], pI1=plugInner[(ai+1)%A];
+      const b=positions.length/3;
+      positions.push(cx,baseT,cz);          normals.push(0,1,0);
+      positions.push(pI0[0],pI0[1],pI0[2]); normals.push(0,1,0);
+      positions.push(pI1[0],pI1[1],pI1[2]); normals.push(0,1,0);
+      indices.push(b,b+1,b+2);
+    }
+  }
+
+  // Top rim annular band
+  for(let ai=0;ai<A;ai++){
+    const oT0=outerV[V][ai],oT1=outerV[V][ai+1];
+    const iT0=innerV[V][ai],iT1=innerV[V][ai+1];
+    const b=positions.length/3;
+    for(const p of[oT0,oT1,iT1,iT0]){positions.push(p[0],p[1],p[2]);normals.push(0,0,0);}
+    indices.push(b,b+1,b+2,b,b+2,b+3);
+  }
+
+  // Top is open (correct for a vase) — no cap needed.
+  // The top rim annular band above seals the wall thickness at the top edge.
+
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+  geo.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  lastMinOuterR=minRO;
+  return geo;
+}
+
+function rebuildMesh(){
+  const geo=buildGeometry(state);
+  if(vaseMesh){scene.remove(vaseMesh);vaseMesh.geometry.dispose();}
+  xsPlane.constant=state.height/2;
+  vaseMat.clippingPlanes=state.showXS?[xsPlane]:[];
+  vaseMesh=new THREE.Mesh(geo,vaseMat);
+  vaseMesh.castShadow=true; vaseMesh.receiveShadow=true;
+  scene.add(vaseMesh);
+  orb.target.set(0,state.height/2,0);
+  const v=geo.attributes.position.count,f=(geo.index?.count||0)/3;
+  document.getElementById('st-verts').textContent=v.toLocaleString();
+  document.getElementById('st-faces').textContent=f.toLocaleString();
+  drawAmpPreview();updateWallGuidance();
+}
+function schedRebuild(){if(regenTimer)clearTimeout(regenTimer);regenTimer=setTimeout(rebuildMesh,80);}
+
+// ═══════════════════════════════════════════════════════════════════
+// AMP/ZONE PREVIEW
+// ═══════════════════════════════════════════════════════════════════
+function drawAmpPreview(){
+  const cvs=document.getElementById('amp-preview');
+  const ctx=cvs.getContext('2d');
+  const W=cvs.width,H2=cvs.height;
+  ctx.clearRect(0,0,W,H2);
+  ctx.fillStyle='#12141E';ctx.fillRect(0,0,W,H2);
+  const grad=ctx.createLinearGradient(0,0,W,0);
+  grad.addColorStop(0,'#1E90FF');
+  grad.addColorStop(state.midPos,'#62E9FB');
+  grad.addColorStop(1,'#B464FF');
+  ctx.beginPath();
+  for(let px=0;px<=W;px++){
+    const t=px/W;
+    const{wBot,wMid,wTop}=zoneWeightsAt(t,state);
+    const rBot=(state.bot.scale/100);
+    const rMid=(state.mid.scale/100);
+    const rTop=(state.top.scale/100);
+    const r=rBot*wBot+rMid*wMid+rTop*wTop;
+    const py=H2-(r)*H2*0.9-H2*0.05;
+    if(px===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+  }
+  ctx.strokeStyle=grad;ctx.lineWidth=2;ctx.stroke();
+  // Zone markers
+  [{t:0,l:'BOT',c:'#1E90FF'},{t:state.midPos,l:'MID',c:'#62E9FB'},{t:1,l:'TOP',c:'#B464FF'}].forEach(m=>{
+    const px=m.t*W;
+    ctx.beginPath();ctx.arc(px,H2/2,3,0,Math.PI*2);ctx.fillStyle=m.c;ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='8px sans-serif';ctx.fillText(m.l,px+4,H2/2-3);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PROFILE THUMBNAILS
+// ═══════════════════════════════════════════════════════════════════
+function drawProfileThumb(canvas2d, pts) {
+  const ctx=canvas2d.getContext('2d');
+  const W=canvas2d.width,H=canvas2d.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0F1117';ctx.fillRect(0,0,W,H);
+  if(!pts||pts.length<3)return;
+  // Find extents
+  let mnx=Infinity,mxx=-Infinity,mnz=Infinity,mxz=-Infinity;
+  pts.forEach(([x,z])=>{mnx=Math.min(mnx,x);mxx=Math.max(mxx,x);mnz=Math.min(mnz,z);mxz=Math.max(mxz,z);});
+  const sc=Math.min(W/(mxx-mnx+0.01),H/(mxz-mnz+0.01))*0.8;
+  const ox=W/2-(mnx+mxx)/2*sc, oz=H/2-(mnz+mxz)/2*sc;
+  ctx.beginPath();
+  pts.forEach(([x,z],i)=>{
+    const px=x*sc+ox,py=z*sc+oz;
+    if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+  });
+  ctx.closePath();
+  ctx.fillStyle='rgba(30,144,255,0.25)';ctx.fill();
+  ctx.strokeStyle='#62E9FB';ctx.lineWidth=1.5;ctx.stroke();
+}
+
+// Build profile picker cards
+const PROFILE_DEFS=[
+  {key:'stock-p1', label:'Profile 1\n(Organic)', pd:{type:'svg_stock',key:'p1'}},
+  {key:'stock-p2', label:'Profile 2',             pd:{type:'svg_stock',key:'p2'}},
+  {key:'stock-p3', label:'Profile 3',             pd:{type:'svg_stock',key:'p3'}},
+  {key:'stock-p4', label:'Profile 4',             pd:{type:'svg_stock',key:'p4'}},
+  {key:'custom',   label:'Custom\nWave',          pd:{type:'wave',ripple:12,amp:10,sharp:20,org:0,seed:0}},
+  {key:'polygon',  label:'Polygon',               pd:{type:'polygon',sides:6,rounding:0}},
+  {key:'ellipse',  label:'Ellipse',               pd:{type:'ellipse',ew:100,eh:130}},
+];
+
+function buildProfileGrid(){
+  const grid2=document.getElementById('profile-grid');
+  grid2.innerHTML='';
+  PROFILE_DEFS.forEach(def=>{
+    const card=document.createElement('div');
+    card.className='pcard';
+    card.dataset.key=def.key;
+    const cv=document.createElement('canvas');
+    cv.width=56;cv.height=56;
+    // Draw thumb
+    const pts=getProfilePoints(def.pd,120);
+    drawProfileThumb(cv,pts);
+    card.appendChild(cv);
+    const sp=document.createElement('span');
+    sp.textContent=def.label;
+    card.appendChild(sp);
+    card.addEventListener('click',()=>selectProfile(def));
+    grid2.appendChild(card);
+  });
+  // Add import card
+  const importCard=document.createElement('div');
+  importCard.className='pcard';
+  importCard.innerHTML='<span style="font-size:20px;color:var(--text-muted)">+</span><span>Import\nSVG</span>';
+  importCard.addEventListener('click',()=>document.getElementById('svg-file-input').click());
+  grid2.appendChild(importCard);
+}
+
+function selectProfile(def){
+  document.querySelectorAll('.pcard').forEach(c=>c.classList.remove('on'));
+  const card=document.querySelector(`.pcard[data-key="${def.key}"]`);
+  if(card)card.classList.add('on');
+
+  const zoneState=state[activeZone];
+  // Clone the profile def
+  if(def.key==='custom'){
+    // Keep current custom params but switch type
+    zoneState.profile={type:'wave',ripple:zoneState.profile.ripple||12,amp:zoneState.profile.amp||10,sharp:zoneState.profile.sharp||20,org:zoneState.profile.org||0,seed:zoneState.profile.seed||0};
+  } else {
+    zoneState.profile={...def.pd};
+  }
+  showProfileControls(zoneState.profile.type);
+  updateProfileUI();
+  schedRebuild();markUnsaved();
+}
+
+function showProfileControls(type){
+  document.getElementById('custom-controls').style.display=(type==='wave')?'flex':'none';
+  document.getElementById('custom-controls').style.flexDirection='column';
+  document.getElementById('custom-controls').style.gap='9px';
+  document.getElementById('polygon-controls').style.display=(type==='polygon')?'flex':'none';
+  document.getElementById('polygon-controls').style.flexDirection='column';
+  document.getElementById('polygon-controls').style.gap='9px';
+  document.getElementById('ellipse-controls').style.display=(type==='ellipse')?'flex':'none';
+  document.getElementById('ellipse-controls').style.flexDirection='column';
+  document.getElementById('ellipse-controls').style.gap='9px';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ZONE TABS
+// ═══════════════════════════════════════════════════════════════════
+document.querySelectorAll('.ztab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.ztab').forEach(t=>t.classList.remove('on'));
+    tab.classList.add('on');
+    activeZone=tab.dataset.zone;
+    updateZoneUI();
+  });
+});
+
+function setMidMode(isMid){
+  // Profile picker and shape controls hidden for middle zone
+  document.getElementById('profile-grid').style.display = isMid ? 'none' : 'grid';
+  document.getElementById('btn-import-svg').style.display = isMid ? 'none' : 'block';
+  document.getElementById('custom-controls').style.display = 'none';
+  document.getElementById('polygon-controls').style.display = 'none';
+  document.getElementById('ellipse-controls').style.display = 'none';
+  const lbl = document.getElementById('profile-shape-lbl');
+  if(lbl) lbl.style.display = isMid ? 'none' : 'block';
+  // Show mid-specific bulge/pinch control
+  document.getElementById('mid-modifier').style.display = isMid ? 'flex' : 'none';
+}
+
+function updateZoneUI(){
+  const z=state[activeZone];
+  const labels={bot:'Bottom',mid:'Middle',top:'Top'};
+  const lbl=labels[activeZone];
+  document.getElementById('lbl-scale').textContent=`${lbl} Scale`;
+  document.getElementById('lbl-twist').textContent=`${lbl} Twist`;
+  // Mid zone has wider scale range (5–95%), bot/top use 20–100%
+  const scaleSlider=document.getElementById('sl-scale');
+  if(activeZone==='mid'){scaleSlider.min=5;scaleSlider.max=95;}
+  else{scaleSlider.min=20;scaleSlider.max=100;}
+  document.getElementById('sl-scale').value=z.scale;
+  document.getElementById('v-scale').textContent=`${z.scale}%`;
+  document.getElementById('sl-twist').value=z.twist;
+  document.getElementById('v-twist').textContent=`${z.twist}°`;
+  document.getElementById('sl-twacc').value=z.twistAcc;
+  document.getElementById('v-twacc').textContent=`${Math.round(z.twistAcc)}%`;
+  const isMid=(activeZone==='mid');
+  setMidMode(isMid);
+  if(!isMid){
+    updateProfileUI();
+    const type=z.profile?z.profile.type:'wave';
+    document.querySelectorAll('.pcard').forEach(c=>c.classList.remove('on'));
+    let matchKey='custom';
+    PROFILE_DEFS.forEach(d=>{if(JSON.stringify(d.pd)===JSON.stringify(z.profile))matchKey=d.key;});
+    const mc=document.querySelector(`.pcard[data-key="${matchKey}"]`);
+    if(mc)mc.classList.add('on');
+    showProfileControls(type);
+  }
+}
+
+function updateProfileUI(){
+  const p=state[activeZone].profile;
+  if(p.type==='wave'){
+    document.getElementById('sl-ripple').value=p.ripple||12;
+    document.getElementById('v-ripple').textContent=p.ripple||12;
+    document.getElementById('sl-amp').value=p.amp||10;
+    document.getElementById('v-amp').textContent=`${p.amp||10}%`;
+    document.getElementById('sl-sharp').value=p.sharp||20;
+    document.getElementById('v-sharp').textContent=`${Math.round(p.sharp||20)}%`;
+    document.getElementById('sl-org').value=p.org||0;
+    document.getElementById('v-org').textContent=`${Math.round(p.org||0)}%`;
+  } else if(p.type==='polygon'){
+    document.getElementById('sl-sides').value=p.sides||6;
+    document.getElementById('v-sides').textContent=p.sides||6;
+    document.getElementById('sl-round').value=p.rounding||0;
+    document.getElementById('v-round').textContent=`${p.rounding||0}%`;
+  } else if(p.type==='ellipse'){
+    document.getElementById('sl-ew').value=p.ew||100;
+    document.getElementById('v-ew').textContent=`${p.ew||100}%`;
+    document.getElementById('sl-eh').value=p.eh||100;
+    document.getElementById('v-eh').textContent=`${p.eh||100}%`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SLIDER WIRING
+// ═══════════════════════════════════════════════════════════════════
+function sl(id,vid,setter,fmt){
+  const el=document.getElementById(id),vl=document.getElementById(vid);
+  if(!el)return;
+  el.addEventListener('input',()=>{setter(parseFloat(el.value));if(vl)vl.textContent=fmt(parseFloat(el.value));schedRebuild();markUnsaved();});
+}
+
+// Dimensions
+sl('sl-height',   'v-height',   v=>state.height=v,       v=>`${v} mm`);
+sl('sl-wall',     'v-wall',     v=>state.wall=v,         v=>`${v.toFixed(1)} mm`);
+sl('sl-basethick','v-basethick',v=>state.baseThick=v,    v=>`${v.toFixed(1)} mm`);
+
+// Layout
+sl('sl-midpos','v-midpos',v=>state.midPos=v/100,v=>`${Math.round(v)}%`);
+sl('sl-blend', 'v-blend', v=>state.blend=v,    v=>`${Math.round(v)}%`);
+sl('sl-phase', 'v-phase', v=>state.phase=v,    v=>`${Math.round(v)}°`);
+
+// Top adjustment
+sl('sl-tilt',     'v-tilt',     v=>state.topAdj.tilt=v,     v=>`${Math.round(v)}%`);
+sl('sl-curvepow', 'v-curvepow', v=>state.topAdj.curve=v,    v=>`${v.toFixed(1)}`);
+
+document.getElementById('tilt-linear').addEventListener('click',()=>{
+  state.topAdj.mode='linear';
+  document.getElementById('tilt-linear').classList.add('on');
+  document.getElementById('tilt-curved').classList.remove('on');
+  document.getElementById('tilt-curve-controls').style.display='none';
+  schedRebuild();markUnsaved();
+});
+document.getElementById('tilt-curved').addEventListener('click',()=>{
+  state.topAdj.mode='curved';
+  document.getElementById('tilt-curved').classList.add('on');
+  document.getElementById('tilt-linear').classList.remove('on');
+  document.getElementById('tilt-curve-controls').style.display='flex';
+  document.getElementById('tilt-curve-controls').style.flexDirection='column';
+  document.getElementById('tilt-curve-controls').style.gap='9px';
+  schedRebuild();markUnsaved();
+});
+
+// ── WAVE MODULATION WIRING ────────────────────────────────────────────────
+let activeWaveZone = 'top'; // which zone the wave sliders currently edit
+
+function syncWaveUI(){
+  const wz = state.waves.linked ? state.waves.top : state.waves[activeWaveZone];
+  document.getElementById('sl-w-ripple').value = wz.ripple;
+  document.getElementById('v-w-ripple').textContent = Math.round(wz.ripple);
+  document.getElementById('sl-w-amp').value = wz.amp;
+  document.getElementById('v-w-amp').textContent = `${wz.amp}%`;
+  document.getElementById('sl-w-sharp').value = wz.sharp;
+  document.getElementById('v-w-sharp').textContent = `${Math.round(wz.sharp)}%`;
+  document.getElementById('sl-w-org').value = wz.org;
+  document.getElementById('v-w-org').textContent = `${Math.round(wz.org)}%`;
+  // Shape buttons
+  document.querySelectorAll('[data-wshape]').forEach(b=>{
+    b.classList.toggle('on', b.dataset.wshape === wz.shape);
+  });
+  // Zone tab buttons
+  document.getElementById('wz-top').classList.toggle('on', activeWaveZone==='top');
+  document.getElementById('wz-bot').classList.toggle('on', activeWaveZone==='bot');
+  // Link checkbox
+  document.getElementById('ck-wave-link').checked = state.waves.linked;
+  // Disable bot tab when linked
+  document.getElementById('wz-bot').disabled = state.waves.linked;
+  document.getElementById('wz-bot').style.opacity = state.waves.linked ? '0.4' : '1';
+}
+
+// Enable toggle
+document.getElementById('ck-wave-enable').addEventListener('change', e=>{
+  state.waves.enabled = e.target.checked;
+  document.getElementById('wave-controls').style.display = e.target.checked ? 'flex' : 'none';
+  schedRebuild(); markUnsaved();
+});
+
+// Zone tabs
+document.getElementById('wz-top').addEventListener('click',()=>{
+  activeWaveZone='top'; syncWaveUI();
+});
+document.getElementById('wz-bot').addEventListener('click',()=>{
+  if(!state.waves.linked){ activeWaveZone='bot'; syncWaveUI(); }
+});
+
+// Link toggle
+document.getElementById('ck-wave-link').addEventListener('change', e=>{
+  state.waves.linked = e.target.checked;
+  if(e.target.checked){
+    // Copy top to bot
+    state.waves.bot = JSON.parse(JSON.stringify(state.waves.top));
+    activeWaveZone = 'top';
+  }
+  syncWaveUI(); schedRebuild(); markUnsaved();
+});
+
+// Wave shape buttons
+document.querySelectorAll('[data-wshape]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const shape = btn.dataset.wshape;
+    if(state.waves.linked){
+      state.waves.top.shape = shape; state.waves.bot.shape = shape;
+    } else {
+      state.waves[activeWaveZone].shape = shape;
+    }
+    syncWaveUI(); schedRebuild(); markUnsaved();
+  });
+});
+
+// Wave sliders helper
+function wsl(slId, vId, setter, fmt){
+  const sl=document.getElementById(slId);
+  const vEl=document.getElementById(vId);
+  sl.addEventListener('input',()=>{
+    const v=parseFloat(sl.value);
+    setter(v);
+    vEl.textContent=fmt(v);
+    schedRebuild(); markUnsaved();
+  });
+}
+wsl('sl-w-ripple','v-w-ripple', v=>{
+  if(state.waves.linked){state.waves.top.ripple=v;state.waves.bot.ripple=v;}
+  else state.waves[activeWaveZone].ripple=v;
+}, v=>Math.round(v));
+wsl('sl-w-amp','v-w-amp', v=>{
+  if(state.waves.linked){state.waves.top.amp=v;state.waves.bot.amp=v;}
+  else state.waves[activeWaveZone].amp=v;
+}, v=>`${v}%`);
+wsl('sl-w-sharp','v-w-sharp', v=>{
+  if(state.waves.linked){state.waves.top.sharp=v;state.waves.bot.sharp=v;}
+  else state.waves[activeWaveZone].sharp=v;
+}, v=>`${Math.round(v)}%`);
+wsl('sl-w-org','v-w-org', v=>{
+  if(state.waves.linked){state.waves.top.org=v;state.waves.bot.org=v;}
+  else state.waves[activeWaveZone].org=v;
+}, v=>`${Math.round(v)}%`);
+
+// Zone sliders (write to activeZone)
+sl('sl-scale','v-scale',v=>state[activeZone].scale=v,       v=>`${Math.round(v)}%`);
+sl('sl-twist','v-twist',v=>state[activeZone].twist=v,       v=>`${Math.round(v)}°`);
+sl('sl-twacc','v-twacc',v=>state[activeZone].twistAcc=v,    v=>`${Math.round(v)}%`);
+
+// Profile sliders
+sl('sl-ripple','v-ripple',v=>{if(state[activeZone].profile.type==='wave')state[activeZone].profile.ripple=Math.round(v);},v=>`${Math.round(v)}`);
+sl('sl-amp',   'v-amp',   v=>{if(state[activeZone].profile.type==='wave')state[activeZone].profile.amp=v;},           v=>`${v}%`);
+sl('sl-sharp', 'v-sharp', v=>{if(state[activeZone].profile.type==='wave')state[activeZone].profile.sharp=v;},         v=>`${Math.round(v)}%`);
+sl('sl-org',   'v-org',   v=>{if(state[activeZone].profile.type==='wave')state[activeZone].profile.org=v;},           v=>`${Math.round(v)}%`);
+sl('sl-sides', 'v-sides', v=>{if(state[activeZone].profile.type==='polygon')state[activeZone].profile.sides=Math.round(v);},v=>`${Math.round(v)}`);
+sl('sl-round', 'v-round', v=>{if(state[activeZone].profile.type==='polygon')state[activeZone].profile.rounding=v;},  v=>`${Math.round(v)}%`);
+sl('sl-ew',    'v-ew',    v=>{if(state[activeZone].profile.type==='ellipse')state[activeZone].profile.ew=v;},         v=>`${Math.round(v)}%`);
+sl('sl-eh',    'v-eh',    v=>{if(state[activeZone].profile.type==='ellipse')state[activeZone].profile.eh=v;},         v=>`${Math.round(v)}%`);
+
+document.getElementById('ck-morph-match').addEventListener('change',e=>{state.morphMatch=e.target.checked;schedRebuild();});
+
+// ═══════════════════════════════════════════════════════════════════
+// SVG IMPORT
+// ═══════════════════════════════════════════════════════════════════
+document.getElementById('btn-import-svg').addEventListener('click',()=>document.getElementById('svg-file-input').click());
+document.getElementById('svg-file-input').addEventListener('change',e=>{
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const txt=ev.target.result;
+    const match=txt.match(/d="([^"]*)"/);
+    if(!match){alert('No path found in SVG.');return;}
+    const pts=parseSVGPath(match[1],0,0,1,A+1);
+    state[activeZone].profile={type:'svg_user',points:pts,label:file.name};
+    // Add import card highlight
+    document.querySelectorAll('.pcard').forEach(c=>c.classList.remove('on'));
+    showProfileControls('svg_user');
+    schedRebuild();markUnsaved();
+  };
+  reader.readAsText(file);
+  e.target.value='';
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// VIEWPORT CONTROLS
+// ═══════════════════════════════════════════════════════════════════
+document.querySelectorAll('#res-group .vbtn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('#res-group .vbtn').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');state.resolution=btn.dataset.res;
+    document.getElementById('st-res').textContent=btn.dataset.res.charAt(0).toUpperCase()+btn.dataset.res.slice(1);
+    schedRebuild();
+  });
+});
+document.getElementById('btn-floor').addEventListener('click',()=>{
+  state.showFloor=!state.showFloor;grid.visible=state.showFloor;shadowPlane.visible=state.showFloor;
+  const b=document.getElementById('btn-floor');
+  b.textContent=`⊟ Floor: ${state.showFloor?'On':'Off'}`;b.classList.toggle('on',state.showFloor);
+});
+document.getElementById('btn-xs').addEventListener('click',()=>{
+  state.showXS=!state.showXS;const b=document.getElementById('btn-xs');
+  b.textContent=`⊡ X-Section: ${state.showXS?'On':'Off'}`;b.classList.toggle('on',state.showXS);
+  schedRebuild();
+});
+document.getElementById('btn-resetcam').addEventListener('click',()=>{
+  camera.position.copy(DEF_CAM);orb.target.set(0,state.height/2,0);orb.update();
+});
+
+// Section collapse
+document.querySelectorAll('.sec-hd').forEach(h=>{
+  h.addEventListener('click',()=>{
+    const id=h.dataset.s,body=document.getElementById(`bd-${id}`);if(!body)return;
+    const c=body.classList.toggle('shut');h.classList.toggle('shut',c);
+  });
+});
+
+// Panel toggle
+let ppOpen=true;
+document.getElementById('panel-toggle').addEventListener('click',()=>{
+  ppOpen=!ppOpen;
+  document.getElementById('pp').classList.toggle('closed',!ppOpen);
+  document.getElementById('panel-toggle').textContent=ppOpen?'› Params':'‹ Params';
+  setTimeout(onResize,300);
+});
+
+// Golden proportions
+document.getElementById('btn-golden').addEventListener('click',()=>{
+  const H=state.height;
+  state.bot.scale=Math.round((H*0.382/H*2)*100);  // base dia = H*0.382 → radius/H
+  state.top.scale=Math.round((H*0.618/H*2)*100);
+  state.mid.scale=Math.round((state.bot.scale+state.top.scale)/2);
+  syncAllUI();schedRebuild();markUnsaved();
+});
+
+// Randomise
+document.getElementById('btn-rand').addEventListener('click',()=>{
+  pushUndo();
+  state.seed=Math.floor(Math.random()*99999);
+  const ri=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+  const rf=(a,b)=>parseFloat((Math.random()*(b-a)+a).toFixed(1));
+  ['bot','mid','top'].forEach(z=>{
+    if(state[z].profile.type==='wave'){
+      state[z].profile.ripple=ri(5,24);
+      state[z].profile.amp=rf(2,16);
+      state[z].profile.org=ri(0,80);
+      state[z].profile.sharp=ri(10,60);
+      state[z].profile.seed=Math.floor(Math.random()*9999);
+    }
+    state[z].scale=ri(30,95);
+    state[z].twist=Math.round(rf(-180,180)/5)*5;
+  });
+  syncAllUI();schedRebuild();markUnsaved();
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// UNDO / REDO
+// ═══════════════════════════════════════════════════════════════════
+function cloneS(){return JSON.parse(JSON.stringify(state));}
+function pushUndo(){undoStack.push(cloneS());if(undoStack.length>50)undoStack.shift();redoStack.length=0;updateUndoUI();}
+function applyS(s){
+  Object.assign(state,JSON.parse(JSON.stringify(s)));
+  syncAllUI();schedRebuild();
+}
+function syncAllUI(){
+  document.getElementById('sl-height').value=state.height;document.getElementById('v-height').textContent=`${state.height} mm`;
+  document.getElementById('sl-wall').value=state.wall;document.getElementById('v-wall').textContent=`${state.wall.toFixed(1)} mm`;updateWallGuidance();
+  document.getElementById('sl-basethick').value=state.baseThick;document.getElementById('v-basethick').textContent=`${state.baseThick.toFixed(1)} mm`;
+  document.getElementById('sl-midpos').value=state.midPos*100;document.getElementById('v-midpos').textContent=`${Math.round(state.midPos*100)}%`;
+  document.getElementById('sl-blend').value=state.blend;document.getElementById('v-blend').textContent=`${Math.round(state.blend)}%`;
+  document.getElementById('sl-phase').value=state.phase;document.getElementById('v-phase').textContent=`${Math.round(state.phase)}°`;
+  document.getElementById('ck-morph-match').checked=state.morphMatch;
+  // Top adjustment panel
+  if(state.topAdj){
+    document.getElementById('sl-tilt').value=state.topAdj.tilt||0;
+    document.getElementById('v-tilt').textContent=`${Math.round(state.topAdj.tilt||0)}%`;
+    document.getElementById('sl-curvepow').value=state.topAdj.curve||2;
+    document.getElementById('v-curvepow').textContent=(state.topAdj.curve||2).toFixed(1);
+    const isLinear=(state.topAdj.mode||'linear')==='linear';
+    document.getElementById('tilt-linear').classList.toggle('on', isLinear);
+    document.getElementById('tilt-curved').classList.toggle('on', !isLinear);
+    document.getElementById('tilt-curve-controls').style.display=isLinear?'none':'flex';
+  }
+  // Resolution buttons
+  document.querySelectorAll('[data-res]').forEach(b=>{
+    b.classList.toggle('on', b.dataset.res===state.resolution);
+  });
+  // Wave panel
+  if(state.waves){
+    document.getElementById('ck-wave-enable').checked = state.waves.enabled;
+    document.getElementById('wave-controls').style.display = state.waves.enabled ? 'flex' : 'none';
+    syncWaveUI();
+  }
+  updateZoneUI();
+}
+// Wall-thickness guidance: tint the recommended band on the slider and warn
+// when the chosen wall exceeds what the form's thinnest ring can support.
+function updateWallGuidance(){
+  const lo=(WALL_REC_MIN-1)/(6-1)*100, hi=(WALL_REC_MAX-1)/(6-1)*100;
+  const slEl=document.getElementById('sl-wall');
+  if(slEl) slEl.style.background=
+    `linear-gradient(90deg,var(--border) 0%,var(--border) ${lo}%,rgba(98,233,251,.32) ${lo}%,rgba(98,233,251,.32) ${hi}%,var(--border) ${hi}%)`;
+  const w=document.getElementById('wall-warn');
+  if(!w) return;
+  if(isFinite(lastMinOuterR)){
+    const maxW=lastMinOuterR-5; // 5 = inner-radius floor in buildGeometry
+    if(maxW>0 && state.wall>maxW){
+      document.getElementById('wall-warn-max').textContent=maxW.toFixed(1);
+      w.style.display='block';
+    } else { w.style.display='none'; }
+  } else { w.style.display='none'; }
+}
+function updateUndoUI(){
+  document.getElementById('btn-undo').disabled=undoStack.length===0;
+  document.getElementById('btn-redo').disabled=redoStack.length===0;
+  document.getElementById('st-undo').textContent=undoStack.length;
+  document.getElementById('st-redo').textContent=redoStack.length;
+}
+document.getElementById('btn-undo').addEventListener('click',()=>{if(!undoStack.length)return;redoStack.push(cloneS());applyS(undoStack.pop());updateUndoUI();});
+document.getElementById('btn-redo').addEventListener('click',()=>{if(!redoStack.length)return;undoStack.push(cloneS());applyS(redoStack.pop());updateUndoUI();});
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey){
+    if(e.key==='z'&&!e.shiftKey){e.preventDefault();document.getElementById('btn-undo').click();}
+    if((e.key==='z'&&e.shiftKey)||e.key==='y'){e.preventDefault();document.getElementById('btn-redo').click();}
+    if(e.key==='s'){e.preventDefault();document.getElementById('btn-save').click();}
+    if(e.key==='o'){e.preventDefault();document.getElementById('btn-open').click();}
+    if(e.key==='n'){e.preventDefault();document.getElementById('btn-new').click();}
+  }
+});
+
+// Save/Load
+function markUnsaved(){document.getElementById('save-status').textContent='Unsaved';document.getElementById('save-status').style.color='#FF8C42';}
+function markSaved(){document.getElementById('save-status').textContent='Saved';document.getElementById('save-status').style.color='#62E9FB';}
+// Robust download: anchor MUST be in the DOM before .click() or Firefox/Safari
+// silently drop it (this was the Save bug). Reused by Export.
+function downloadBlob(blob,filename){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+document.getElementById('btn-save').addEventListener('click',()=>{
+  const data={format:'vasedesign',version:'2.0',meta:{name:document.getElementById('design-name').value,modified:new Date().toISOString()},state:cloneS()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  downloadBlob(blob,(document.getElementById('design-name').value||'untitled')+'.vasedesign');
+  markSaved();
+});
+document.getElementById('btn-open').addEventListener('click',()=>{
+  const inp=document.createElement('input');inp.type='file';inp.accept='.vasedesign';
+  inp.onchange=e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=ev=>{try{
+  const d=JSON.parse(ev.target.result);
+  if(!d.state){alert('Unrecognised file format.');return;}
+  // Deep merge: replace state entirely then ensure required sub-objects exist
+  const loaded=JSON.parse(JSON.stringify(d.state));
+  // Ensure topAdj exists (files saved before it was added)
+  if(!loaded.topAdj) loaded.topAdj={tilt:0,curve:2,mode:'linear'};
+  // Ensure waves exists
+  if(!loaded.waves) loaded.waves={enabled:false,linked:true,activeTab:'top',
+    top:{ripple:12,amp:6,sharp:20,org:0,shape:'sine'},
+    bot:{ripple:12,amp:6,sharp:20,org:0,shape:'sine'}};
+  // Ensure all three zones exist
+  ['bot','mid','top'].forEach(z=>{if(!loaded[z])loaded[z]=defaultZone(z);});
+  // Replace state in-place
+  Object.keys(state).forEach(k=>delete state[k]);
+  Object.assign(state,loaded);
+  // Loading starts a fresh history — clear undo/redo
+  undoStack.length=0;redoStack.length=0;updateUndoUI();
+  syncAllUI();
+  schedRebuild();
+  markSaved();
+  if(d.meta&&d.meta.name) document.getElementById('design-name').value=d.meta.name;
+}catch(err){alert('Load error: '+err.message);}};
+    r.readAsText(f);
+  };inp.click();
+});
+document.getElementById('btn-new').addEventListener('click',()=>{
+  if(confirm('Start new? Unsaved changes will be lost.')){
+    Object.assign(state,{height:200,wall:2.5,baseThick:3,midPos:0.5,blend:50,morphMatch:false,phase:0,bot:defaultZone('bot'),mid:defaultZone('mid'),top:defaultZone('top'),resolution:'standard',showFloor:true,showXS:false,seed:Math.floor(Math.random()*99999),
+      topAdj:{tilt:0,curve:2,mode:'linear'},
+      waves:{enabled:false,linked:true,activeTab:'top',top:{ripple:12,amp:6,sharp:20,org:0,shape:'sine'},bot:{ripple:12,amp:6,sharp:20,org:0,shape:'sine'}}});
+    state.bot.scale=60;state.mid.scale=70;state.top.scale=80;
+    undoStack.length=0;redoStack.length=0;updateUndoUI();
+    syncAllUI();schedRebuild();markUnsaved();
+  }
+});
+// ═══════════════════════════════════════════════════════════════════
+// EXPORT — STL (Binary/ASCII) + 3MF
+// ═══════════════════════════════════════════════════════════════════
+const stlExporter=new STLExporter();
+let expFmt='stl-bin', expRes='medium';
+const expModal=document.getElementById('export-modal');
+
+// Format + resolution button groups
+document.querySelectorAll('#export-modal [data-expfmt]').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#export-modal [data-expfmt]').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); expFmt=b.dataset.expfmt;
+}));
+document.querySelectorAll('#export-modal [data-expres]').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#export-modal [data-expres]').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); expRes=b.dataset.expres;
+}));
+document.getElementById('exp-cancel').addEventListener('click',()=>{expModal.style.display='none';});
+expModal.addEventListener('click',e=>{if(e.target===expModal)expModal.style.display='none';});
+
+function openExportModal(){
+  document.getElementById('exp-name').value=(document.getElementById('design-name').value||'untitled-vase').replace(/[\\\/]/g,'-');
+  expModal.style.display='flex';
+}
+
+// Build a minimal valid 3MF (ZIP) from a BufferGeometry — indexed, millimetres
+function export3MF(geo){
+  const pos=geo.attributes.position, idx=geo.index;
+  const va=[], ta=[];
+  for(let i=0;i<pos.count;i++){
+    va.push(`<vertex x="${pos.getX(i).toFixed(4)}" y="${pos.getY(i).toFixed(4)}" z="${pos.getZ(i).toFixed(4)}"/>`);
+  }
+  if(idx){
+    for(let i=0;i<idx.count;i+=3){
+      ta.push(`<triangle v1="${idx.getX(i)}" v2="${idx.getX(i+1)}" v3="${idx.getX(i+2)}"/>`);
+    }
+  } else {
+    for(let i=0;i<pos.count;i+=3){
+      ta.push(`<triangle v1="${i}" v2="${i+1}" v3="${i+2}"/>`);
+    }
+  }
+  const model=`<?xml version="1.0" encoding="UTF-8"?>
+<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
+<resources><object id="1" type="model"><mesh><vertices>${va.join('')}</vertices><triangles>${ta.join('')}</triangles></mesh></object></resources>
+<build><item objectid="1" transform="1 0 0 0 1 0 0 0 1 0 0 0"/></build>
+</model>`;
+  const ct=`<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/></Types>`;
+  const rels=`<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/startpart"/></Relationships>`;
+  const zipped=zipSync({
+    '[Content_Types].xml':strToU8(ct),
+    '_rels/.rels':strToU8(rels),
+    '3D/3dmodel.model':strToU8(model)
+  });
+  return new Blob([zipped],{type:'application/vnd.ms-package.3dmanufacturing-3dmodel+xml'});
+}
+
+function doExport(){
+  const name=(document.getElementById('exp-name').value||'untitled-vase').replace(/[\\\/]/g,'-').trim()||'untitled-vase';
+  // Fresh geometry at the EXPORT resolution — viewport mesh untouched
+  const geo=buildGeometry({...state, resolution:expRes});
+  let blob, ext;
+  try {
+    if(expFmt==='3mf'){
+      blob=export3MF(geo); ext='3mf';
+    } else {
+      const res=stlExporter.parse(new THREE.Mesh(geo),{binary:expFmt==='stl-bin'});
+      blob=new Blob([res],{type:'model/stl'}); ext='stl';
+    }
+  } finally {
+    geo.dispose();
+  }
+  downloadBlob(blob, name+'.'+ext);
+  expModal.style.display='none';
+}
+document.getElementById('exp-go').addEventListener('click',doExport);
+document.getElementById('btn-export').addEventListener('click',openExportModal);
+
+// Editing the design name marks the doc unsaved
+document.getElementById('design-name').addEventListener('input',markUnsaved);
+
+// ═══════════════════════════════════════════════════════════════════
+// RESIZE & RENDER LOOP
+// ═══════════════════════════════════════════════════════════════════
+function onResize(){
+  const w=container.clientWidth,h=container.clientHeight;
+  renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();
+}
+window.addEventListener('resize',onResize);onResize();
+(function loop(){requestAnimationFrame(loop);orb.update();renderer.render(scene,camera);})();
+
+// ═══════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════
+// Parse stock SVG profiles
+const p1raw=SVG_PATHS.p1;
+STOCK_PROFILES['p1']=parseSVGPath(p1raw.d,0,0,1,481);
+
+// Stock profiles 2-4
+const SVG_P2_D=`M28.1938,-0.377465 C28.202,0.341138 28.3867,0.924478 28.5553,1.32577 C28.812,1.9365 29.1968,2.50163 29.6659,2.96439 C29.9786,3.27281 30.3988,3.60733 30.928,3.84266 C31.4087,4.05643 31.9126,4.15903 32.4384,4.17376 C33.4378,4.20176 34.4807,3.91183 35.5205,3.52971 C36.8546,3.03941 38.1987,2.39039 39.4695,2.02963 C40.0559,1.86316 40.6317,1.75642 41.1862,1.75814 C41.5918,1.7594 41.9879,1.8188 42.3689,1.95733 C42.8319,2.12564 43.1918,2.38112 43.4792,2.64597 C43.9438,3.07418 44.3634,3.66062 44.695,4.34278 C45.0776,5.13002 45.3423,6.0427 45.4248,6.98701 C45.5265,8.15165 45.3212,9.02151 45.1646,9.52463 C44.8671,10.4811 44.3463,11.3937 43.709,12.1631 C43.1832,12.7978 42.5864,13.3262 41.9826,13.6974 C41.6237,13.918 41.2264,14.105 40.8193,14.2043 C40.5402,14.2724 40.1875,14.3158 39.78,14.2505 C39.3913,14.1882 39.0294,14.0391 38.6918,13.8378 C37.1711,12.9306 35.8973,10.8151 34.4701,9.17028 C33.9636,8.58649 33.4329,8.05582 32.8606,7.66169 C32.5006,7.41372 32.1114,7.21119 31.691,7.09075 C31.3013,6.9791 30.907,6.94428 30.5043,6.987 C29.946,7.04622 29.4267,7.24939 28.9825,7.48332 C28.3048,7.8402 27.6414,8.36248 27.1053,8.98083 C26.7301,9.41367 26.4061,9.90652 26.19,10.4355 C25.9088,11.1236 25.8586,11.7488 25.8613,12.1798 C25.8654,12.8428 26.0054,13.5126 26.2625,14.1198 C26.4342,14.5253 26.6949,14.9944 27.0937,15.4133 C27.4563,15.7941 27.8827,16.0811 28.3628,16.2953 C28.9797,16.5704 29.6699,16.7187 30.3933,16.8 C31.9965,16.98 33.785,16.8321 35.3545,16.9727 C36.011,17.0315 36.6353,17.1411 37.1933,17.3504 C37.582,17.4962 37.9437,17.6924 38.2619,17.9589 C38.6523,18.2861 38.8956,18.6504 39.058,18.9648 C39.33,19.4913 39.5104,20.1412 39.5853,20.8498 C39.6775,21.7216 39.61,22.6799 39.3574,23.6072 C39.1716,24.2893 38.8655,25.0391 38.3531,25.7525 C37.8024,26.5194 37.0676,27.1716 36.2691,27.674 C35.501,28.1572 34.6761,28.5009 33.8978,28.6754 C33.3905,28.7892 32.905,28.8305 32.4698,28.791 C32.1679,28.7636 31.8224,28.6914 31.4693,28.5114 C31.1364,28.3418 30.8541,28.1055 30.6101,27.823 C30.1254,27.2618 29.7769,26.501 29.4851,25.6497 C28.9935,24.2157 28.6626,22.5245 28.1151,21.0994 C27.8761,20.4771 27.5935,19.8988 27.2334,19.4144 C26.9864,19.082 26.6982,18.7877 26.3554,18.5555 C26.0063,18.319 25.6248,18.1634 25.212,18.08 C24.6317,17.9629 23.9966,17.9895 23.4127,18.0917 C22.6663,18.2222 21.9103,18.4925 21.2537,18.8743 C20.5375,19.2907 20.1295,19.7284 19.9158,19.9896 C19.5262,20.466 19.2417,21.0202 19.0644,21.6081 C18.8748,22.2367 18.8125,22.8879 18.8654,23.4948 C18.9259,24.1895 19.1243,24.6762 19.2719,24.968 C19.5219,25.4626 19.8719,25.8819 20.2876,26.2476 C21.0964,26.9592 22.1618,27.4752 23.2534,27.945 C24.4273,28.4503 25.6437,28.9062 26.6405,29.4941 C27.1335,29.7848 27.5767,30.11 27.9337,30.4929 C28.206,30.785 28.4272,31.1099 28.5821,31.4777 C28.7589,31.8974 28.8325,32.3332 28.8344,32.7879 C28.8371,33.4591 28.6838,34.2115 28.3905,34.96 C28.0621,35.7983 27.5707,36.5999 26.965,37.2719 C26.2088,38.1109 25.4447,38.5627 24.8785,38.8294 C23.9471,39.2682 22.8894,39.5137 21.8659,39.5613 C21.1054,39.5966 20.3815,39.5224 19.7592,39.3468 C19.3857,39.2414 19.0101,39.0883 18.6868,38.8711 C18.3995,38.6782 18.1602,38.4395 17.9697,38.1506 C17.7462,37.8118 17.6072,37.4302 17.5225,37.0342 C17.1561,35.3219 17.7277,32.9831 17.8695,30.8625 C17.9208,30.097 17.9168,29.3522 17.7881,28.674 C17.7065,28.2448 17.5722,27.8277 17.3578,27.4468 C17.1578,27.0913 16.8998,26.788 16.5811,26.5341 C16.1338,26.1779 15.6119,25.9559 15.1329,25.8108 C14.4004,25.589 13.5643,25.4938 12.7518,25.5557 C12.1838,25.5989 11.6103,25.7204 11.0874,25.9429 C10.5358,26.1776 10.043,26.5249 9.62539,26.9516 C9.16343,27.4237 8.79229,27.9957 8.54791,28.6055 C8.38366,29.0154 8.23966,29.5298 8.22806,30.1048 C8.21745,30.6307 8.31856,31.1349 8.50871,31.6252 C8.856,32.5207 9.48857,33.3409 10.2052,34.1243 C11.1785,35.1882 12.3194,36.1961 13.1596,37.2475 C13.5433,37.7275 13.8678,38.2207 14.083,38.7361 C14.2395,39.1108 14.3391,39.4994 14.3598,39.9047 C14.3852,40.4017 14.2875,40.8315 14.1589,41.1892 C13.9478,41.7766 13.5753,42.3839 13.0819,42.9489 C12.504,43.6105 11.7619,44.2126 10.919,44.6585 C9.88781,45.2038 9.0121,45.3531 8.50866,45.4053 C7.52152,45.5075 6.48907,45.3888 5.53911,45.1094 C4.73427,44.8727 3.99893,44.5242 3.40799,44.106 C3.02299,43.8335 2.7023,43.5333 2.46502,43.2167 C2.29452,42.9891 2.11442,42.6826 2.01306,42.282 C1.91749,41.9043 1.91093,41.5177 1.96242,41.132 C2.19742,39.3723 3.67601,37.3727 4.65766,35.411 C5.00449,34.7179 5.29311,34.0226 5.43928,33.3412 C5.53111,32.9131 5.56984,32.4754 5.52063,32.0402 C5.47507,31.6373 5.35686,31.2596 5.16376,30.9036 C4.89672,30.4114 4.51195,30.0094 4.1255,29.6875 C3.53675,29.1971 2.80016,28.783 2.02325,28.5234 C1.47933,28.3417 0.899464,28.2303 0.327461,28.2325 C-0.405179,28.2354 -1.00012,28.4225 -1.4095,28.5947 C-2.02014,28.8514 -2.58517,29.2363 -3.04782,29.7055 C-3.35424,30.0162 -3.68875,30.4355 -3.92438,30.9644 C-4.13795,31.4438 -4.24032,31.9457 -4.25517,32.4702 C-4.28297,33.4526 -4.0036,34.4843 -3.62637,35.5333 C-3.09526,37.0103 -2.35542,38.5561 -1.93979,40.0963 C-1.73424,40.8581 -1.59983,41.6471 -1.62275,42.4372 C-1.64172,43.0912 -1.76729,43.7172 -2.01735,44.3207 C-2.36137,45.151 -2.89791,45.8345 -3.3922,46.3283 C-3.92861,46.8641 -4.56197,47.3228 -5.24855,47.6441 C-5.78549,47.8954 -6.35903,48.0646 -6.94885,48.1191 C-7.67717,48.1864 -8.25547,48.0628 -8.65893,47.9358 C-9.35723,47.7161 -10.0485,47.3236 -10.6955,46.8161 C-11.6556,46.0631 -12.5182,45.0541 -13.1282,44.0038 C-13.5031,43.3583 -13.7867,42.6907 -13.9308,42.0564 C-14.0564,41.5038 -14.0819,40.9487 -13.9859,40.3898 C-13.884,39.7958 -13.6536,39.2478 -13.3393,38.7341 C-12.7122,37.7091 -11.7449,36.8106 -10.7658,35.9499 C-9.84374,35.1394 -8.90536,34.3582 -8.20164,33.5263 C-7.86068,33.1233 -7.54806,32.6767 -7.33655,32.1906 C-7.17739,31.8249 -7.07889,31.4455 -7.05692,31.0476 C-7.03141,30.5853 -7.11175,30.1424 -7.26513,29.7065 C-7.5002,29.0385 -7.91983,28.3484 -8.45806,27.7432 C-8.89769,27.2489 -9.42267,26.8048 -9.99796,26.4813 C-10.392,26.2598 -10.9488,26.0166 -11.6858,25.9314 C-12.334,25.8565 -12.9993,25.9184 -13.6242,26.0976 C-14.1829,26.2579 -14.6955,26.5076 -15.1199,26.8197 C-15.4521,27.0639 -15.8199,27.4118 -16.134,27.9356 C-16.4541,28.4692 -16.6466,29.067 -16.7664,29.6756 C-16.9813,30.7675 -16.9799,31.9845 -16.9834,33.1823 C-16.9866,34.2678 -16.9937,35.3377 -17.1689,36.2849 C-17.26,36.7779 -17.4028,37.2706 -17.6362,37.7159 C-17.8213,38.0692 -18.057,38.381 -18.3551,38.6455 C-18.6095,38.8712 -18.9932,39.137 -19.5926,39.346 C-20.302,39.5933 -21.1546,39.7055 -22.0435,39.6603 C-22.9144,39.6159 -23.7954,39.4216 -24.5995,39.0786 C-25.3569,38.7555 -26.0718,38.2901 -26.7437,37.5967 C-27.4827,36.834 -28.0599,35.9092 -28.4281,34.9871 C-28.6847,34.3444 -28.8396,33.7033 -28.8767,33.1195 C-28.9105,32.589 -28.8396,32.2248 -28.7792,32.0065 C-28.6866,31.6718 -28.5325,31.3701 -28.3181,31.097 C-28.0507,30.7564 -27.7077,30.4839 -27.3387,30.2596 C-26.4434,29.7153 -25.2528,29.3678 -24.0252,29.0309 C-22.8491,28.7082 -21.6443,28.3964 -20.6285,27.9323 C-20.1331,27.7059 -19.6437,27.4255 -19.2327,27.0651 C-18.9323,26.8017 -18.6784,26.5001 -18.4868,26.1497 C-18.2453,25.708 -18.1488,25.2734 -18.11,24.9044 C-18.0426,24.2636 -18.1185,23.5295 -18.3215,22.8069 C-18.5112,22.1314 -18.8128,21.4627 -19.215,20.8889 C-19.5706,20.3815 -19.9934,19.9648 -20.5184,19.6342 C-21.0618,19.292 -21.6768,19.0659 -22.308,18.9586 C-22.9069,18.8567 -23.5059,18.8641 -24.05,18.9706 C-24.5032,19.0592 -24.9799,19.2288 -25.4579,19.5489 C-25.9621,19.8866 -26.3772,20.3318 -26.7328,20.8216 C-27.3785,21.7113 -27.8683,22.8025 -28.3686,23.8894 C-28.8019,24.8306 -29.2386,25.7579 -29.7834,26.522 C-30.0833,26.9427 -30.4303,27.334 -30.8438,27.6452 C-31.1975,27.9114 -31.5829,28.1064 -32.0086,28.2257 C-32.4969,28.3625 -33.037,28.3992 -33.6609,28.328 C-34.6343,28.2167 -35.7407,27.8506 -36.7742,27.2909 C-37.6029,26.8422 -38.3988,26.2613 -39.0407,25.5745 C-39.5485,25.0311 -39.9908,24.3879 -40.2917,23.5767 C-40.5795,22.8008 -40.6937,21.9908 -40.6627,21.2253 C-40.6362,20.5707 -40.5038,19.95 -40.282,19.4103 C-40.1263,19.0313 -39.9166,18.6684 -39.6463,18.3628 C-39.445,18.1352 -39.1567,17.8793 -38.7308,17.6733 C-38.283,17.4568 -37.7887,17.3471 -37.2956,17.2971 C-35.4456,17.1094 -33.1061,17.7106 -31.0074,17.8807 C-30.2315,17.9436 -29.4792,17.9487 -28.7949,17.8276 C-28.364,17.7513 -27.9441,17.622 -27.5598,17.4121 C-27.2045,17.218 -26.8998,16.9661 -26.6437,16.6531 C-26.292,16.2233 -26.0666,15.7197 -25.9147,15.2398 C-25.6834,14.5086 -25.5795,13.6682 -25.6344,12.8487 C-25.6728,12.2743 -25.7904,11.6931 -26.0105,11.1627 C-26.2416,10.6054 -26.5794,10.1172 -27.0042,9.69415 C-27.4742,9.22622 -28.0456,8.84955 -28.6562,8.59972 C-29.0609,8.43413 -29.5774,8.2836 -30.1582,8.26686 C-30.6835,8.25171 -31.1879,8.34787 -31.6792,8.53382 C-32.3788,8.79858 -33.032,9.2376 -33.6575,9.75535 C-34.875,10.7632 -36.0017,12.0823 -37.1758,13.0551 C-37.6757,13.4693 -38.1887,13.8247 -38.7248,14.0646 C-39.1007,14.2327 -39.4925,14.346 -39.9029,14.3794 C-40.4059,14.4203 -40.8333,14.3328 -41.1716,14.2225 C-41.7356,14.0384 -42.3215,13.702 -42.8736,13.2495 C-43.5541,12.6917 -44.1815,11.9593 -44.6548,11.1185 C-45.0186,10.4723 -45.3231,9.71357 -45.4551,8.84214 C-45.5984,7.89661 -45.5285,6.90262 -45.3049,5.97391 C-45.0966,5.10901 -44.7567,4.30549 -44.334,3.6522 C-44.0584,3.22641 -43.749,2.86658 -43.419,2.59685 C-43.1889,2.4088 -42.8925,2.21859 -42.5119,2.10041 C-42.153,1.98895 -41.7832,1.96145 -41.4091,1.99321 C-40.8672,2.03922 -40.307,2.21009 -39.7413,2.44656 C-38.6829,2.88905 -37.5723,3.57622 -36.4584,4.19503 C-35.6062,4.66849 -34.7445,5.10658 -33.9024,5.3594 C-33.4365,5.49926 -32.9496,5.59046 -32.4625,5.58295 C-32.067,5.57686 -31.6857,5.50611 -31.3188,5.35925 C-30.9762,5.2221 -30.5787,4.99157 -30.1485,4.57356 C-29.6099,4.05036 -29.1324,3.34339 -28.7993,2.5681 C-28.5506,1.98903 -28.3775,1.35967 -28.3291,0.73292 C-28.2995,0.349704 -28.2978,-0.271179 -28.5456,-1.01922 C-28.7528,-1.64471 -29.0924,-2.23007 -29.5226,-2.72563 C-29.8892,-3.14795 -30.3119,-3.49422 -30.7532,-3.73872 C-31.1437,-3.95508 -31.6134,-4.12773 -32.1925,-4.192 C-32.8084,-4.26035 -33.4447,-4.19452 -34.0937,-4.04946 C-35.3684,-3.76453 -36.7033,-3.17099 -38.0512,-2.65589 C-39.0419,-2.27731 -40.0416,-1.94016 -41.0288,-1.80103 C-41.6544,-1.71285 -42.2827,-1.70316 -42.9038,-1.81838 C-43.6389,-1.95475 -44.2119,-2.23742 -44.6599,-2.53119 C-45.3512,-2.98454 -46.0042,-3.63483 -46.5228,-4.40019 C-46.9473,-5.02652 -47.2804,-5.72861 -47.4695,-6.46077 C-47.6194,-7.0412 -47.6789,-7.6408 -47.6215,-8.23714 C-47.5802,-8.6667 -47.4563,-9.32225 -47.0259,-10.1313 C-46.554,-11.0184 -45.8567,-11.8234 -45.0872,-12.4734 C-44.3719,-13.0777 -43.5809,-13.5602 -42.8111,-13.8618 C-42.1194,-14.1328 -41.5892,-14.201 -41.2138,-14.2108 C-40.6945,-14.2243 -40.1967,-14.1327 -39.712,-13.9457 C-39.1061,-13.712 -38.5582,-13.3429 -38.0638,-12.9257 C-36.8834,-11.9297 -35.8474,-10.5244 -34.777,-9.33386 C-34.2196,-8.71387 -33.6468,-8.14487 -33.0351,-7.72519 C-32.666,-7.47194 -32.2673,-7.26263 -31.8369,-7.1379 C-31.4465,-7.02472 -31.0517,-6.98732 -30.6477,-7.02787 C-30.0947,-7.08338 -29.5785,-7.28035 -29.1297,-7.51393 C-28.4494,-7.86794 -27.7824,-8.38898 -27.2424,-9.00722 C-26.8639,-9.44052 -26.5367,-9.93441 -26.3177,-10.4648 C-26.0319,-11.1572 -25.9819,-11.7847 -25.9831,-12.2064 C-25.9849,-12.8694 -26.1229,-13.5396 -26.3782,-14.1477 C-26.5476,-14.5512 -26.8067,-15.0226 -27.2056,-15.4446 C-27.5666,-15.8266 -27.9916,-16.115 -28.4708,-16.3308 C-29.1478,-16.6356 -29.9138,-16.7867 -30.7156,-16.8633 C-32.2918,-17.0137 -34.0259,-16.8767 -35.5478,-17.0189 C-36.1948,-17.0793 -36.8096,-17.1906 -37.3589,-17.4 C-37.7438,-17.5467 -38.1013,-17.7435 -38.4153,-18.01 C-38.8003,-18.3367 -39.0408,-18.7006 -39.2018,-19.0172 C-39.4706,-19.5455 -39.6472,-20.1968 -39.7179,-20.9065 C-39.8053,-21.7822 -39.7315,-22.7439 -39.4721,-23.6734 C-39.2737,-24.3842 -38.954,-25.1364 -38.4309,-25.8478 C-37.8648,-26.6177 -37.1136,-27.2713 -36.2998,-27.7704 C-35.5405,-28.2359 -34.7312,-28.5648 -33.9694,-28.7287 C-33.4728,-28.8355 -32.9988,-28.8716 -32.5741,-28.8292 C-32.2778,-28.7997 -31.9338,-28.7248 -31.5814,-28.5398 C-31.2488,-28.3653 -30.9678,-28.1237 -30.7256,-27.8372 C-30.3902,-27.4403 -30.1238,-26.9511 -29.8976,-26.414 C-29.4552,-25.3634 -29.1536,-24.0967 -28.8058,-22.869 C-28.5353,-21.9139 -28.2348,-20.9738 -27.8146,-20.1818 C-27.5845,-19.7482 -27.3048,-19.3332 -26.9543,-18.9884 C-26.6725,-18.7111 -26.3547,-18.4887 -25.9929,-18.33 C-25.6406,-18.1756 -25.2,-18.0612 -24.6235,-18.0482 C-23.8805,-18.0316 -23.0495,-18.1863 -22.2683,-18.4901 C-21.6752,-18.7207 -21.0992,-19.042 -20.6137,-19.4509 C-20.3131,-19.7042 -19.8769,-20.1345 -19.5299,-20.8106 C-19.2456,-21.3646 -19.0767,-21.9759 -19.0279,-22.5953 C-18.9839,-23.1547 -19.0376,-23.7243 -19.1969,-24.2607 C-19.3255,-24.6938 -19.5583,-25.2251 -20.0306,-25.8075 C-20.5077,-26.3959 -21.1247,-26.9075 -21.8165,-27.3713 C-23.483,-28.4887 -25.6282,-29.3569 -27.4796,-30.3498 C-28.4148,-30.8512 -29.288,-31.3908 -29.9843,-32.0181 C-30.397,-32.3899 -30.768,-32.8112 -31.0445,-33.2936 C-31.3458,-33.8192 -31.472,-34.3069 -31.5244,-34.7282 C-31.6015,-35.3482 -31.543,-36.0213 -31.3629,-36.6976 C-31.1436,-37.5213 -30.7451,-38.3449 -30.195,-39.0745 C-29.7966,-39.6027 -29.2368,-40.1948 -28.4641,-40.6823 C-27.6779,-41.1784 -26.7716,-41.5016 -25.8558,-41.6618 C-24.9601,-41.8184 -24.0514,-41.8198 -23.2274,-41.671 C-22.6756,-41.5714 -22.1247,-41.3975 -21.6361,-41.1278 C-21.291,-40.9373 -20.8905,-40.6514 -20.5201,-40.1832 C-20.1446,-39.7085 -19.8865,-39.1548 -19.7014,-38.5804 C-19.2592,-37.2083 -19.1723,-35.527 -19.0758,-33.8323 C-18.9956,-32.4229 -18.9088,-31.0073 -18.6049,-29.7583 C-18.4463,-29.1064 -18.2186,-28.4585 -17.874,-27.881 C-17.6033,-27.4273 -17.2691,-27.0308 -16.8561,-26.7018 C-16.3093,-26.2661 -15.6971,-26.0079 -15.1446,-25.8465 C-14.397,-25.6281 -13.5818,-25.544 -12.805,-25.6081 C-12.2204,-25.6564 -11.6579,-25.7858 -11.1409,-26.0166 C-10.5921,-26.2615 -10.103,-26.6186 -9.69075,-27.0542 C-9.23892,-27.5316 -8.87916,-28.1036 -8.64462,-28.7138 C-8.51073,-29.0621 -8.35069,-29.5869 -8.34915,-30.2159 C-8.34785,-30.7473 -8.46022,-31.2552 -8.66037,-31.7472 C-9.06183,-32.7342 -9.80538,-33.6319 -10.6197,-34.4911 C-11.555,-35.4779 -12.5956,-36.4247 -13.3601,-37.4123 C-13.7243,-37.8827 -14.029,-38.3661 -14.228,-38.8708 C-14.3763,-39.2471 -14.4659,-39.6356 -14.4769,-40.0397 C-14.4901,-40.5211 -14.3897,-40.9534 -14.2397,-41.3424 C-14.0049,-41.951 -13.6006,-42.5772 -13.071,-43.1529 C-12.4783,-43.7972 -11.7302,-44.377 -10.8874,-44.7993 C-9.8409,-45.3237 -8.94525,-45.4565 -8.3648,-45.4944 C-7.34804,-45.561 -6.2883,-45.4014 -5.3268,-45.0755 C-4.57514,-44.8208 -3.89773,-44.4698 -3.35831,-44.0588 C-3.03667,-43.8137 -2.73247,-43.5229 -2.50295,-43.1923 C-2.30232,-42.9033 -2.16421,-42.5913 -2.09101,-42.2489 C-2.00712,-41.8565 -2.01603,-41.4564 -2.08192,-41.0612 C-2.2068,-40.3124 -2.54617,-39.5223 -2.96887,-38.7116 C-3.64261,-37.4194 -4.5255,-36.0799 -5.0942,-34.766 C-5.35104,-34.1727 -5.54576,-33.5799 -5.62306,-32.9983 C-5.67708,-32.5919 -5.67449,-32.1847 -5.59038,-31.7836 C-5.50353,-31.3693 -5.33613,-30.9913 -5.09613,-30.6426 C-4.77886,-30.1817 -4.31379,-29.7419 -3.76434,-29.3691 C-3.14396,-28.9483 -2.42368,-28.6184 -1.69538,-28.4359 C-0.904123,-28.2376 -0.308717,-28.2642 0.0511477,-28.3076 C0.666405,-28.3818 1.26022,-28.586 1.79896,-28.8892 C2.36563,-29.2082 2.85739,-29.6288 3.23663,-30.0966 C3.66484,-30.6249 3.8643,-31.1084 3.96812,-31.4514 C4.13207,-31.993 4.16832,-32.5511 4.12109,-33.1144 C3.96947,-34.9227 2.95161,-36.8574 2.29452,-38.6868 C2.03216,-39.4172 1.82441,-40.1379 1.75615,-40.8296 C1.71306,-41.2663 1.72433,-41.7051 1.82301,-42.1329 C1.91792,-42.5444 2.08762,-42.9195 2.33173,-43.2633 C2.68203,-43.7568 3.15918,-44.1495 3.60467,-44.4401 C4.33329,-44.9154 5.23205,-45.2831 6.19488,-45.4695 C6.97897,-45.6213 7.79279,-45.65 8.58224,-45.5268 C9.58368,-45.3705 10.438,-44.9847 11.1321,-44.5627 C11.9695,-44.0537 12.7033,-43.4016 13.2496,-42.7104 C13.6097,-42.2547 13.8871,-41.7833 14.0578,-41.3265 C14.1965,-40.9553 14.2571,-40.614 14.2548,-40.2859 C14.2522,-39.9236 14.173,-39.5776 14.0324,-39.244 C13.8519,-38.8156 13.5727,-38.4125 13.234,-38.0271 C12.506,-37.1991 11.4809,-36.429 10.4687,-35.6428 C9.59987,-34.968 8.73991,-34.2808 8.08565,-33.5352 C7.7459,-33.148 7.43781,-32.718 7.22655,-32.2468 C7.06464,-31.8857 6.96353,-31.5098 6.93813,-31.1152 C6.90873,-30.6585 6.98315,-30.2202 7.13147,-29.7863 C7.35699,-29.1267 7.76427,-28.4436 8.28966,-27.8402 C8.7287,-27.336 9.25559,-26.8818 9.83393,-26.5493 C10.2449,-26.313 10.7985,-26.071 11.5197,-25.9806 C12.1658,-25.8996 12.8301,-25.9553 13.4556,-26.128 C14.0209,-26.2841 14.5407,-26.5317 14.972,-26.843 C15.3132,-27.0893 15.6821,-27.4356 15.9962,-27.949 C16.3185,-28.476 16.5141,-29.0669 16.6366,-29.6705 C16.8572,-30.7568 16.8588,-31.97 16.8627,-33.1671 C16.8662,-34.2612 16.8716,-35.3417 17.0472,-36.2994 C17.1386,-36.7976 17.282,-37.2954 17.517,-37.7457 C17.7038,-38.1036 17.9419,-38.4194 18.2432,-38.6876 C18.4975,-38.9138 18.8863,-39.1858 19.4981,-39.4002 C20.2161,-39.6518 21.0786,-39.767 21.9759,-39.7215 C22.8381,-39.6778 23.7094,-39.4869 24.5056,-39.1483 C25.2529,-38.8304 25.9617,-38.3711 26.6303,-37.6826 C27.3713,-36.9194 27.9501,-35.991 28.3194,-35.0641 C28.5775,-34.4166 28.7331,-33.77 28.77,-33.1813 C28.8036,-32.6468 28.7319,-32.2798 28.6706,-32.0592 C28.5769,-31.722 28.4213,-31.418 28.205,-31.143 C27.9352,-30.8002 27.5894,-30.5261 27.2175,-30.3004 C26.3184,-29.755 25.125,-29.4069 23.8956,-29.0693 C22.72,-28.7465 21.5168,-28.4345 20.5028,-27.9707 C20.0081,-27.7444 19.5194,-27.4641 19.1091,-27.104 C18.809,-26.8407 18.5556,-26.5393 18.3643,-26.1891 C18.1235,-25.7481 18.0271,-25.3138 17.9884,-24.9442 C17.9213,-24.3032 17.9976,-23.569 18.201,-22.8464 C18.391,-22.1715 18.6927,-21.5035 19.095,-20.9303 C19.451,-20.4228 19.8743,-20.0064 20.3996,-19.6762 C20.9434,-19.3343 21.5588,-19.1087 22.1902,-19.0018 C22.7888,-18.9005 23.3874,-18.9082 23.9311,-19.015 C24.3822,-19.1036 24.8577,-19.2726 25.3332,-19.5915 C25.8343,-19.9275 26.2458,-20.3704 26.5965,-20.8594 C27.3985,-21.9777 27.9524,-23.4338 28.5548,-24.8178 C28.9519,-25.7303 29.3724,-26.6176 29.902,-27.3525 C30.2112,-27.7814 30.5693,-28.1747 30.9968,-28.4869 C31.3858,-28.7709 31.8097,-28.9716 32.2761,-29.0892 C32.9475,-29.2584 33.6284,-29.2352 34.1756,-29.162 C35.0201,-29.0491 35.9094,-28.7632 36.7249,-28.3141 C37.3704,-27.9585 37.9658,-27.5026 38.456,-26.9524 C38.8177,-26.5464 39.2759,-25.9169 39.6087,-24.9466 C39.9387,-23.9847 40.0656,-22.9179 40.0023,-21.9066 C39.9551,-21.1532 39.8038,-20.4444 39.561,-19.8435 C39.3363,-19.2874 39.0829,-18.9473 38.9007,-18.742 C38.6262,-18.4326 38.3018,-18.1925 37.9294,-18.0126 C37.4526,-17.7823 36.9261,-17.6653 36.4014,-17.6104 C34.8961,-17.4529 33.1066,-17.7747 31.4154,-17.9222 C30.5354,-17.9989 29.6731,-18.0296 28.8914,-17.916 C28.4344,-17.8495 27.9829,-17.7304 27.5685,-17.5256 C27.2106,-17.3487 26.897,-17.1164 26.6289,-16.8211 C26.43,-16.6022 26.1256,-16.2051 25.875,-15.5239 C25.6092,-14.8014 25.4738,-13.9494 25.5018,-13.1072 C25.5218,-12.5092 25.6248,-11.9003 25.8351,-11.3419 C25.9607,-11.0087 26.2219,-10.435 26.7762,-9.84715 C27.2317,-9.36402 27.7918,-8.9713 28.3955,-8.70237 C28.7184,-8.5585 29.255,-8.35808 29.9014,-8.31585 C30.4239,-8.28172 30.9289,-8.35768 31.4248,-8.52568 C32.277,-8.8144 33.0597,-9.36026 33.8048,-9.9841 C34.6788,-10.7159 35.5041,-11.5582 36.3377,-12.2378 C36.8204,-12.6313 37.3101,-12.9739 37.8155,-13.2041 C38.1458,-13.3545 38.4917,-13.4609 38.8531,-13.4961 C39.216,-13.5314 39.5691,-13.4926 39.9168,-13.3847 C40.2919,-13.2683 40.7182,-13.0544 41.2124,-12.6596 C41.9547,-12.0666 42.7097,-11.1766 43.3434,-10.127 C43.9701,-9.08913 44.4679,-7.91224 44.728,-6.72633 C45.0365,-5.31999 44.9631,-4.12975 44.7865,-3.16087 C44.6233,-2.26561 44.335,-1.44974 43.9665,-0.79131 C43.7274,-0.364006 43.4564,-0.00592604 43.1645,0.266252 C42.8935,0.518808 42.661,0.644649 42.505,0.712713 C42.2711,0.814784 42.0267,0.865789 41.7717,0.869851 C41.4434,0.875079 41.118,0.802067 40.8102,0.690316 C40.3216,0.51296 39.824,0.21903 39.3309,-0.129254 C38.3154,-0.846432 37.2513,-1.844 36.181,-2.7674 C35.3496,-3.48471 34.4988,-4.17187 33.6625,-4.63627 C33.2578,-4.86104 32.8146,-5.0567 32.3609,-5.15574 C32.0526,-5.22304 31.7395,-5.24588 31.4266,-5.20532 C31.1075,-5.16396 30.8108,-5.05981 30.5319,-4.89822 C30.3072,-4.76805 30.0982,-4.60306 29.9098,-4.42369 C29.7016,-4.22538 29.5112,-4.00263 29.3415,-3.77011 C28.9763,-3.26985 28.6825,-2.69219 28.4843,-2.1026 C28.3022,-1.56087 28.1915,-0.981318 28.1936,-0.411252 C28.1936,-0.399957 28.1937,-0.388695 28.1938,-0.377465 `;
+const SVG_P3_D=`M23.5121,0.263411 C23.5092,0.513545 23.5224,0.680911 23.5434,0.867311 C23.5852,1.2379 23.6655,1.59943 23.7726,1.94593 C23.9336,2.46672 24.154,2.95446 24.4128,3.39715 C24.7878,4.03861 25.279,4.60446 25.7045,4.92161 C26.0271,5.16203 26.2654,5.26784 26.5463,5.34719 C27.0088,5.47783 27.5447,5.43427 27.9676,5.28084 C28.5765,5.05994 28.9898,4.7168 29.4017,4.33802 C30.2737,3.53633 31.0678,2.4992 31.8826,1.72732 C32.3321,1.30148 32.786,0.958443 33.2083,0.777085 C33.6729,0.577592 34.1265,0.595966 34.4574,0.703758 C34.6484,0.765954 34.8442,0.858857 35.0539,0.990766 C35.4832,1.26083 35.9281,1.68366 36.2574,2.18778 C36.7626,2.96112 36.9692,3.87866 36.7435,4.75445 C36.7041,4.90736 36.6515,5.06097 36.5895,5.21188 C36.3749,5.7351 36.0805,6.18971 35.7314,6.64356 C35.2016,7.33235 34.5559,7.97488 33.8796,8.54358 C33.0118,9.27333 32.047,9.90816 31.2771,10.2642 C31.0021,10.3914 30.7552,10.4809 30.5491,10.5357 C30.0013,10.6816 29.7334,10.6297 29.4942,10.4833 C29.2509,10.3345 28.9977,9.99387 28.7595,9.50768 C28.4575,8.89114 28.2091,8.08236 27.6996,7.35639 C27.4647,7.02167 27.1442,6.68044 26.6906,6.46715 C26.25,6.25995 25.7455,6.22586 25.327,6.28689 C25.1514,6.3125 24.9917,6.35025 24.8291,6.39911 C24.2821,6.56346 23.7196,6.8557 23.1904,7.26985 C22.5488,7.77195 21.9529,8.5007 21.6254,9.26605 C21.4983,9.56292 21.408,9.85803 21.3415,10.1564 C21.1218,11.1411 21.1573,12.1853 21.3734,13.0954 C21.4885,13.5804 21.6399,14.0087 21.8965,14.4262 C22.0071,14.6063 22.1411,14.7846 22.3076,14.9493 C22.6838,15.3215 23.2349,15.5672 23.737,15.6281 C24.4794,15.7181 25.1312,15.5456 25.7865,15.3364 C26.9256,14.9727 28.0851,14.4295 29.075,14.2363 C29.7957,14.0956 30.3699,14.1518 30.8017,14.4419 C30.9813,14.5625 31.1283,14.6799 31.3588,15.0121 C31.615,15.3816 31.9488,16.1072 32.1278,16.8977 C32.3888,18.0497 32.381,19.3793 31.9394,20.3756 C31.838,20.6044 31.7369,20.7915 31.551,21.0274 C31.5001,21.0921 31.4406,21.1616 31.3703,21.2349 C31.1592,21.4552 30.8174,21.726 30.4172,21.9458 C29.5822,22.4044 28.5625,22.6716 27.5526,22.7891 C27.0935,22.8425 26.6387,22.8637 26.2115,22.8557 C25.8004,22.848 25.3205,22.8107 24.88,22.7179 C24.8241,22.7061 24.7689,22.6934 24.7144,22.6798 C24.1013,22.5268 23.6239,22.2549 23.3453,21.8574 C23.0526,21.4397 22.9272,20.8058 22.9008,20.0517 C22.8735,19.2714 22.9607,18.4041 22.793,17.5238 C22.7174,17.1269 22.5833,16.7037 22.2704,16.3137 C21.9388,15.9004 21.4422,15.6387 20.9972,15.5259 C20.7946,15.4746 20.603,15.4462 20.3989,15.4304 C19.8088,15.3847 19.1529,15.4562 18.4864,15.6633 C17.7387,15.8956 16.96,16.3505 16.437,16.8614 C16.0508,17.2386 15.7872,17.6112 15.5536,18.0153 C15.1273,18.7525 14.8519,19.5681 14.7326,20.3425 C14.6591,20.8193 14.6369,21.2567 14.7129,21.7326 C14.7754,22.124 14.9307,22.5581 15.2094,22.9151 C15.5129,23.304 15.9391,23.5718 16.3417,23.7305 C17.1139,24.035 17.9178,24.0739 18.7348,24.1058 C19.981,24.1545 21.2624,24.1621 22.0931,24.5026 C22.7464,24.7704 23.0978,25.2203 23.249,25.9218 C23.344,26.3628 23.3651,26.92 23.2973,27.5373 C23.1699,28.6962 22.7226,29.9745 21.9925,30.8301 C21.7451,31.1201 21.4978,31.3516 21.1203,31.5634 C21.087,31.5821 21.0523,31.6006 21.0162,31.6189 C20.6981,31.7799 20.2229,31.9239 19.7132,31.9787 C18.7008,32.0877 17.5774,31.9166 16.5174,31.5829 C16.2643,31.5032 16.0364,31.4224 15.7742,31.3166 C15.4023,31.1664 14.8093,30.8971 14.3022,30.5446 C13.8223,30.2111 13.4446,29.8067 13.2814,29.3827 C13.0937,28.8949 13.1494,28.3096 13.3786,27.6147 C13.6122,26.9067 14.02,26.1366 14.266,25.2917 C14.4182,24.7688 14.5222,24.164 14.3088,23.5314 C14.1495,23.0593 13.7948,22.6526 13.4611,22.4038 C13.4318,22.382 13.4028,22.3612 13.3741,22.3413 C13.0879,22.1429 12.8676,22.0414 12.6434,21.9481 C12.3433,21.8233 12.0157,21.7235 11.6667,21.654 C11.0307,21.5275 10.3283,21.5062 9.64416,21.6321 C9.36384,21.6837 9.12864,21.7362 8.73703,21.893 C8.60018,21.9478 8.45004,22.0157 8.28974,22.0999 C7.83536,22.3383 7.27122,22.7477 6.81554,23.2055 C6.05805,23.9667 5.49343,24.8395 5.28006,25.7338 C5.24861,25.8657 5.22462,26.0034 5.21169,26.1469 C5.16873,26.6237 5.28281,27.176 5.54391,27.6084 C5.85053,28.1162 6.25579,28.4349 6.67815,28.7074 C7.56839,29.2818 8.61473,29.6493 9.57508,30.0877 C10.5163,30.5174 11.3501,30.9963 11.7794,31.6032 C12.0621,32.0029 12.1494,32.4695 12.1237,32.887 C12.1178,32.9831 12.1075,33.0739 12.0924,33.1709 C12.0372,33.5261 11.9147,33.9399 11.7281,34.3568 C11.3962,35.0988 10.8627,35.8455 10.2158,36.3643 C9.69099,36.7853 9.05096,37.044 8.55175,37.1022 C8.38689,37.1214 8.23087,37.125 8.08009,37.1196 C7.43292,37.0967 6.73091,36.8978 6.04593,36.6025 C5.2474,36.2583 4.46338,35.7818 3.751,35.2413 C3.10795,34.7533 2.46563,34.1615 2.02107,33.6001 C1.94446,33.5034 1.87369,33.4075 1.80944,33.3134 C1.45026,32.7872 1.33097,32.3868 1.32789,32.0328 C1.32399,31.5852 1.53403,31.1264 1.94489,30.6111 C2.41344,30.0235 3.1072,29.4386 3.64263,28.6937 C3.92988,28.2941 4.19069,27.821 4.22158,27.2131 C4.2467,26.7186 4.08157,26.2362 3.86661,25.8755 C3.65892,25.527 3.42643,25.2652 3.13929,25.0006 C2.65282,24.5522 2.02916,24.1532 1.29994,23.8911 C0.831576,23.7228 0.364024,23.6028 -0.30236,23.595 C-0.697562,23.5904 -1.15331,23.6389 -1.63589,23.7587 C-2.63033,24.0054 -3.58709,24.5017 -4.30552,25.1177 C-4.55589,25.3324 -4.7646,25.5425 -4.96597,25.8204 C-5.01105,25.8827 -5.05625,25.9498 -5.10028,26.0222 C-5.32694,26.3949 -5.50153,26.9518 -5.46134,27.4766 C-5.42169,27.9943 -5.23369,28.4257 -5.01049,28.8067 C-4.51704,29.6489 -3.79987,30.3342 -3.1415,31.0408 C-2.37077,31.868 -1.70889,32.7036 -1.5571,33.4069 C-1.45252,33.8914 -1.53473,34.3021 -1.86211,34.8116 C-1.98783,35.0072 -2.16159,35.2272 -2.38613,35.4585 C-3.0712,36.1643 -4.1393,36.8683 -5.24249,37.1986 C-5.97776,37.4187 -6.71825,37.473 -7.37064,37.2888 C-7.67024,37.2042 -7.94948,37.0698 -8.20362,36.9125 C-8.85198,36.5111 -9.40932,35.9291 -9.89176,35.2722 C-10.7218,34.142 -11.318,32.7234 -11.4972,31.7663 C-11.6388,31.0095 -11.5697,30.4912 -11.318,30.0637 C-11.0635,29.6312 -10.5632,29.2743 -9.91277,28.9649 C-9.19916,28.6255 -8.33937,28.3674 -7.57227,27.8898 C-7.14536,27.624 -6.71975,27.2653 -6.4776,26.7049 C-6.29511,26.2826 -6.2639,25.8405 -6.32638,25.4104 C-6.38738,24.9905 -6.53729,24.5549 -6.76404,24.1215 C-7.26646,23.1613 -8.19252,22.2128 -9.34495,21.8346 C-10.0353,21.608 -10.7711,21.5811 -11.463,21.6652 C-12.5943,21.8028 -13.6497,22.2176 -14.3775,22.8364 C-14.7805,23.1791 -15.0702,23.5933 -15.2262,24.0675 C-15.3931,24.5754 -15.3868,25.0958 -15.3147,25.5547 C-15.1566,26.5605 -14.7084,27.4716 -14.3853,28.3594 C-14.0397,29.3094 -13.8536,30.2007 -14.085,30.8873 C-14.2819,31.4718 -14.7795,31.9824 -15.4661,32.4115 C-15.5622,32.4716 -15.662,32.5301 -15.7641,32.5869 C-16.4347,32.9597 -17.1608,33.2473 -17.9746,33.485 C-18.9857,33.7803 -20.0783,33.9649 -21.0913,33.9602 C-21.949,33.9561 -22.8219,33.7883 -23.4064,33.4686 C-23.6259,33.3485 -23.8253,33.2018 -24.0098,33.0277 C-24.8468,32.2373 -25.3097,30.8999 -25.4259,29.5745 C-25.5084,28.6333 -25.4054,27.6612 -25.2169,27.0053 C-25.1944,26.9272 -25.1709,26.8529 -25.1467,26.7821 C-24.9371,26.1704 -24.7047,25.8321 -24.4104,25.5112 C-23.9841,25.0463 -23.3982,24.6961 -22.7149,24.4434 C-21.5054,23.996 -19.9858,23.8605 -18.5958,23.493 C-17.7753,23.2762 -16.9696,22.9845 -16.3343,22.2986 C-16.036,21.9765 -15.8233,21.5811 -15.7088,21.2501 C-15.6507,21.0821 -15.6125,20.9312 -15.5817,20.7713 C-15.4891,20.2899 -15.4846,19.7735 -15.5649,19.2465 C-15.6393,18.7581 -15.788,18.2599 -16.0186,17.7832 C-16.2947,17.2124 -16.6293,16.7973 -16.9003,16.5199 C-17.0808,16.3351 -17.2103,16.2255 -17.3558,16.1099 C-17.6515,15.8749 -17.9688,15.6743 -18.2951,15.5041 C-18.7819,15.25 -19.2882,15.0625 -19.7902,14.9358 C-20.5039,14.7558 -21.249,14.7122 -21.7715,14.7956 C-21.9484,14.8239 -22.1003,14.8636 -22.2275,14.906 C-22.5115,15.0005 -22.7404,15.1232 -22.9645,15.3001 C-23.354,15.6075 -23.6158,16.0284 -23.7755,16.4383 C-24.0683,17.1895 -24.1117,17.9722 -24.1443,18.7736 C-24.1961,20.048 -24.186,21.3578 -24.5646,22.225 C-24.8339,22.8419 -25.2698,23.1673 -25.9428,23.3126 C-25.9642,23.3173 -25.9859,23.3217 -26.0078,23.326 C-26.3597,23.3943 -26.7528,23.4083 -27.0806,23.3961 C-27.4816,23.3813 -27.9162,23.3257 -28.3515,23.2274 C-29.2992,23.0134 -30.2478,22.5974 -30.923,21.9886 C-31.235,21.7072 -31.4429,21.4228 -31.5743,21.1889 C-31.6727,21.0137 -31.7339,20.8667 -31.7899,20.7062 C-31.9376,20.2824 -32.0098,19.8043 -32.0218,19.3057 C-32.0384,18.6183 -31.9404,17.8846 -31.7703,17.1876 C-31.5055,16.102 -31.044,15.0492 -30.5815,14.3761 C-30.2194,13.8491 -29.7907,13.4684 -29.3327,13.3256 C-28.8372,13.1711 -28.2173,13.2618 -27.4934,13.5194 C-26.7227,13.7937 -25.9037,14.2449 -24.982,14.4374 C-24.585,14.5202 -24.1383,14.5591 -23.6566,14.4183 C-23.1498,14.2702 -22.7176,13.9117 -22.4433,13.544 C-22.1997,13.2174 -22.0286,12.8689 -21.8873,12.4645 C-21.6535,11.7958 -21.5315,11.0074 -21.6092,10.1752 C-21.6558,9.6761 -21.7767,9.20755 -21.932,8.81988 C-22.1137,8.36614 -22.3163,8.03503 -22.5495,7.71088 C-22.9757,7.11845 -23.5032,6.60731 -24.0606,6.20279 C-24.6091,5.80475 -25.1617,5.50863 -25.7725,5.36278 C-25.8352,5.3478 -25.8987,5.33465 -25.963,5.32359 C-26.4669,5.23685 -27.0444,5.30464 -27.5207,5.55131 C-28.0085,5.80387 -28.3425,6.16206 -28.6263,6.53983 C-29.2226,7.33363 -29.6204,8.27501 -30.0951,9.14181 C-30.6259,10.1108 -31.251,10.9646 -32.0286,11.3317 C-32.5677,11.5863 -33.2197,11.6318 -33.8884,11.5192 C-34.0652,11.4894 -34.2413,11.4498 -34.4094,11.4054 C-34.7979,11.3027 -35.1278,11.1804 -35.3817,11.077 C-35.9277,10.8547 -36.4877,10.5639 -37.0043,10.2257 C-37.8648,9.66229 -38.6075,8.97487 -39.0285,8.214 C-39.2422,7.82782 -39.3219,7.50147 -39.3492,7.28089 C-39.353,7.25073 -39.3558,7.22211 -39.358,7.19483 C-39.3779,6.9504 -39.355,6.69207 -39.294,6.42593 C-39.2041,6.0339 -39.0304,5.62515 -38.8061,5.23177 C-38.4124,4.54154 -37.8612,3.88038 -37.2415,3.28711 C-37.0029,3.05862 -36.7757,2.85782 -36.4951,2.63251 C-36.0635,2.28593 -35.4643,1.85891 -34.8265,1.53989 C-34.3369,1.29498 -33.8281,1.11921 -33.3412,1.06149 C-32.493,0.960956 -31.7074,1.23718 -30.9291,1.8219 C-30.2649,2.32082 -29.6432,3.0187 -28.9238,3.5796 C-28.4622,3.93951 -27.9212,4.27382 -27.2285,4.30341 C-26.7507,4.32382 -26.2716,4.16217 -25.9142,3.94929 C-25.7096,3.8274 -25.5371,3.69354 -25.3876,3.56261 C-25.0768,3.29031 -24.8171,2.99168 -24.5707,2.63224 C-24.1536,2.02379 -23.8252,1.2768 -23.6956,0.482363 C-23.6613,0.272215 -23.6376,0.0937769 -23.6339,-0.219511 C-23.63,-0.553213 -23.6623,-1.00508 -23.7959,-1.5462 C-23.9298,-2.08838 -24.1513,-2.6465 -24.4168,-3.13618 C-24.7876,-3.82013 -25.2273,-4.42527 -25.8591,-4.88316 C-26.1633,-5.1036 -26.5386,-5.28845 -26.9623,-5.35655 C-27.5143,-5.44525 -28.0681,-5.30998 -28.4982,-5.1115 C-29.1068,-4.83067 -29.5935,-4.42664 -30.0753,-3.99737 C-30.9093,-3.25437 -31.7193,-2.4086 -32.4871,-1.91839 C-33.1207,-1.51387 -33.6738,-1.37639 -34.2023,-1.51972 C-34.3746,-1.56646 -34.5146,-1.6062 -34.8312,-1.81029 C-34.9251,-1.87088 -35.0338,-1.94818 -35.1561,-2.04758 C-35.5198,-2.34297 -35.9526,-2.80652 -36.3145,-3.33187 C-36.982,-4.30096 -37.4639,-5.52652 -37.4184,-6.6052 C-37.4086,-6.83599 -37.3853,-7.03119 -37.3115,-7.29411 C-37.2535,-7.5008 -37.1527,-7.76988 -36.9545,-8.09643 C-36.6992,-8.51696 -36.3153,-8.95555 -35.8918,-9.33196 C-35.0854,-10.0485 -34.0724,-10.6321 -33.1253,-11.0092 C-32.705,-11.1765 -32.2487,-11.3248 -31.7921,-11.4095 C-31.1255,-11.5331 -30.5269,-11.4865 -30.0888,-11.2259 C-29.6592,-10.9704 -29.3024,-10.4672 -28.9921,-9.80894 C-28.6551,-9.09422 -28.3979,-8.23474 -27.9164,-7.46971 C-27.6477,-7.04266 -27.2815,-6.61832 -26.7189,-6.38364 C-26.3015,-6.20956 -25.869,-6.18219 -25.4492,-6.24329 C-25.1945,-6.28035 -24.9375,-6.34985 -24.6736,-6.44959 C-23.8501,-6.76091 -22.9882,-7.34864 -22.3295,-8.22231 C-22.1216,-8.49811 -21.947,-8.75531 -21.7472,-9.22215 C-21.7006,-9.33088 -21.6552,-9.44877 -21.6123,-9.57602 C-21.4729,-9.99032 -21.3612,-10.5405 -21.3285,-11.087 C-21.2806,-11.8886 -21.3736,-12.6785 -21.581,-13.3723 C-21.6902,-13.7377 -21.8243,-14.0666 -22.0183,-14.3823 C-22.1105,-14.5324 -22.2268,-14.6946 -22.3785,-14.8535 C-22.6786,-15.1678 -23.1394,-15.436 -23.5918,-15.5363 C-24.2805,-15.6889 -24.8759,-15.5726 -25.4618,-15.4144 C-26.5152,-15.1299 -27.5691,-14.6258 -28.5919,-14.2855 C-29.417,-14.011 -30.2223,-13.8419 -30.8931,-13.9483 C-31.4178,-14.0316 -31.8657,-14.312 -32.1783,-14.6331 C-32.2708,-14.7281 -32.3522,-14.823 -32.4358,-14.9307 C-32.7431,-15.3269 -33.0344,-15.8635 -33.2336,-16.4456 C-33.543,-17.3496 -33.6281,-18.3346 -33.3812,-19.1523 C-33.2664,-19.5325 -33.0862,-19.8378 -32.9216,-20.047 C-32.7492,-20.2664 -32.5865,-20.4156 -32.3847,-20.575 C-31.9965,-20.8817 -31.5339,-21.1364 -31.0276,-21.3526 C-30.2581,-21.6812 -29.4151,-21.9096 -28.5625,-22.059 C-27.5016,-22.245 -26.3793,-22.3065 -25.5106,-22.2169 C-25.3555,-22.2009 -25.2077,-22.18 -25.0713,-22.155 C-24.3942,-22.031 -24.024,-21.8332 -23.7573,-21.5907 C-23.3924,-21.2591 -23.2034,-20.7599 -23.123,-20.0607 C-23.0381,-19.3224 -23.1054,-18.4393 -22.9401,-17.5498 C-22.8512,-17.072 -22.6696,-16.5472 -22.2739,-16.1328 C-21.9537,-15.7973 -21.5174,-15.583 -21.119,-15.482 C-20.5781,-15.345 -20.0145,-15.3421 -19.4182,-15.4328 C-18.9245,-15.5079 -18.3997,-15.6597 -17.9072,-15.891 C-17.2734,-16.1887 -16.8307,-16.5518 -16.5588,-16.8174 C-16.5387,-16.8371 -16.5195,-16.8562 -16.5013,-16.8746 C-16.3421,-17.0358 -16.2339,-17.1634 -16.1173,-17.3131 C-15.9043,-17.5864 -15.7206,-17.8771 -15.5627,-18.1748 C-15.3086,-18.6541 -15.1196,-19.1529 -14.9898,-19.6489 C-14.7934,-20.399 -14.7539,-21.1832 -14.8346,-21.6886 C-14.8635,-21.8699 -14.9035,-22.0179 -14.9402,-22.1302 C-15.0022,-22.3201 -15.0831,-22.4982 -15.1912,-22.6715 C-15.4255,-23.0468 -15.7858,-23.3525 -16.1488,-23.5435 C-16.643,-23.8035 -17.115,-23.8988 -17.5858,-23.9642 C-18.6567,-24.1128 -19.8173,-24.0582 -20.8256,-24.1583 C-21.5504,-24.2302 -22.2085,-24.3864 -22.6384,-24.6896 C-23.0192,-24.9583 -23.2422,-25.3537 -23.3516,-25.8599 C-23.3752,-25.9691 -23.3931,-26.0816 -23.4063,-26.1918 C-23.4495,-26.5541 -23.447,-26.8435 -23.4267,-27.1641 C-23.3815,-27.8772 -23.2113,-28.6713 -22.9104,-29.3965 C-22.6916,-29.9241 -22.3898,-30.4303 -22.0539,-30.8106 C-21.7368,-31.1696 -21.4444,-31.3699 -21.2278,-31.4914 C-21.2028,-31.5055 -21.179,-31.5183 -21.1549,-31.5309 C-20.9274,-31.6498 -20.6746,-31.7413 -20.4051,-31.807 C-19.9971,-31.9065 -19.552,-31.947 -19.0919,-31.94 C-18.2957,-31.9281 -17.4754,-31.7776 -16.7039,-31.545 C-15.7854,-31.268 -14.9226,-30.8473 -14.415,-30.4987 C-14.0514,-30.2488 -13.848,-30.043 -13.7025,-29.8636 C-13.5073,-29.6231 -13.3845,-29.374 -13.3264,-29.1046 C-13.2249,-28.6344 -13.3312,-28.047 -13.5611,-27.4031 C-13.812,-26.7 -14.2031,-25.9531 -14.4207,-25.1329 C-14.5578,-24.6163 -14.6354,-24.0135 -14.3987,-23.4007 C-14.2286,-22.9602 -13.8957,-22.5938 -13.5829,-22.3605 C-13.5585,-22.3422 -13.5342,-22.3247 -13.5102,-22.3079 C-13.2267,-22.1088 -13.006,-22.0058 -12.7835,-21.9121 C-12.4816,-21.7849 -12.1515,-21.6832 -11.7996,-21.6124 C-11.1662,-21.485 -10.4666,-21.462 -9.78476,-21.5848 C-9.4987,-21.6363 -9.25755,-21.6894 -8.85883,-21.8491 C-8.73573,-21.8984 -8.60229,-21.9581 -8.4607,-22.0305 C-8.12968,-22.1996 -7.73506,-22.4549 -7.36777,-22.7648 C-6.84873,-23.2028 -6.40615,-23.7118 -6.06115,-24.2397 C-5.75324,-24.7109 -5.52033,-25.1932 -5.4018,-25.6898 C-5.36842,-25.8296 -5.34349,-25.9759 -5.33114,-26.1283 C-5.29055,-26.6292 -5.42803,-27.205 -5.70534,-27.6411 C-6.10978,-28.2771 -6.64459,-28.6286 -7.19104,-28.9546 C-8.22614,-29.5721 -9.37417,-30.0319 -10.1147,-30.6604 C-10.5272,-31.0105 -10.7763,-31.3856 -10.8521,-31.8063 C-10.9272,-32.2229 -10.8352,-32.7399 -10.65,-33.2305 C-10.5904,-33.3883 -10.5256,-33.5373 -10.4507,-33.6938 C-10.1203,-34.3844 -9.59036,-35.1937 -8.95117,-35.9373 C-8.16496,-36.8518 -7.19281,-37.7078 -6.18414,-38.1455 C-5.88836,-38.2739 -5.62631,-38.3618 -5.28474,-38.4025 C-5.10493,-38.4239 -4.89407,-38.4288 -4.64768,-38.3934 C-4.19034,-38.3278 -3.69327,-38.1213 -3.23885,-37.8212 C-2.46375,-37.3095 -1.77057,-36.5256 -1.27622,-35.7213 C-1.00662,-35.2826 -0.804002,-34.8612 -0.662764,-34.439 C-0.512846,-33.9908 -0.422833,-33.4616 -0.48665,-32.9579 C-0.569492,-32.3039 -0.90447,-31.6774 -1.41594,-31.0694 C-2.04171,-30.3255 -2.89744,-29.6613 -3.56295,-28.8671 C-3.93704,-28.4207 -4.28259,-27.9046 -4.33665,-27.2133 C-4.37581,-26.7126 -4.21305,-26.2088 -3.98824,-25.8314 C-3.7478,-25.4277 -3.46926,-25.1302 -3.12294,-24.8339 C-2.57576,-24.3657 -1.87424,-23.959 -1.05858,-23.7314 C-0.697368,-23.6306 -0.361574,-23.5575 0.180561,-23.5511 C0.289981,-23.5498 0.40544,-23.5524 0.526728,-23.5599 C0.976663,-23.5875 1.54139,-23.6969 2.06851,-23.8797 C2.83555,-24.1456 3.53638,-24.5398 4.10074,-25.004 C4.38687,-25.2394 4.62859,-25.4787 4.84417,-25.7762 C5.03253,-26.0361 5.23782,-26.4138 5.31355,-26.8549 C5.41218,-27.4292 5.26527,-28.0122 5.05238,-28.4582 C4.73041,-29.1328 4.24755,-29.6803 3.74823,-30.224 C2.86425,-31.1867 1.91546,-32.1134 1.56799,-33.0047 C1.3242,-33.6299 1.40347,-34.1681 1.77579,-34.7458 C1.94407,-35.007 2.17105,-35.2679 2.38784,-35.4822 C2.70278,-35.7936 3.04035,-36.0638 3.43218,-36.3211 C4.24533,-36.8552 5.21277,-37.2542 6.13065,-37.3247 C6.59231,-37.3602 6.982,-37.3022 7.25418,-37.2255 C7.45743,-37.1681 7.60513,-37.106 7.76336,-37.0283 C8.14148,-36.8426 8.5061,-36.5763 8.84638,-36.2588 C9.32906,-35.8083 9.76838,-35.2479 10.1357,-34.6621 C10.7565,-33.672 11.2064,-32.5378 11.3626,-31.6947 C11.3841,-31.5791 11.4005,-31.4678 11.4122,-31.3564 C11.4703,-30.8037 11.3937,-30.3242 11.1578,-29.9505 C10.8799,-29.5102 10.3346,-29.1528 9.62418,-28.8342 C8.90655,-28.5124 8.06693,-28.2603 7.32709,-27.7643 C7.00675,-27.5495 6.67425,-27.2618 6.44397,-26.8418 C6.19163,-26.3816 6.13801,-25.8208 6.20423,-25.3661 C6.25749,-25.0003 6.3702,-24.6521 6.53556,-24.2923 C6.82907,-23.6535 7.28662,-23.0061 7.91667,-22.462 C8.34772,-22.0898 8.80026,-21.8282 9.1832,-21.6643 C9.65258,-21.4634 9.97853,-21.39 10.3483,-21.3261 C10.8983,-21.231 11.4539,-21.2132 11.987,-21.2541 C12.8785,-21.3226 13.736,-21.5622 14.3434,-21.9354 C14.4323,-21.9901 14.5153,-22.0471 14.5925,-22.1061 C14.9715,-22.3958 15.2332,-22.741 15.3949,-23.1619 C15.6614,-23.8555 15.5849,-24.5144 15.4462,-25.1286 C15.2211,-26.125 14.7672,-27.1082 14.4469,-28.0516 C14.1166,-29.0247 13.9578,-29.9113 14.1919,-30.5217 C14.3258,-30.8709 14.6012,-31.1652 14.9214,-31.3868 C14.9956,-31.4382 15.0693,-31.4846 15.1483,-31.5306 C15.4723,-31.7193 15.8922,-31.8992 16.3604,-32.0375 C17.2775,-32.3082 18.3549,-32.411 19.2864,-32.2554 C19.9032,-32.1523 20.4522,-31.9573 20.9358,-31.576 C21.2116,-31.3585 21.5066,-31.0243 21.7499,-30.6222 C22.1327,-29.9896 22.3946,-29.2329 22.5604,-28.4292 C22.6795,-27.8518 22.7456,-27.2788 22.7623,-26.6769 C22.7783,-26.0996 22.743,-25.4563 22.6284,-24.9091 C22.4983,-24.2876 22.2574,-23.7858 21.9031,-23.481 C21.5178,-23.1494 20.9328,-22.9924 20.1894,-22.9488 C19.4028,-22.9026 18.4991,-22.9958 17.5997,-22.859 C17.1079,-22.7842 16.5846,-22.6348 16.1325,-22.2255 C15.7661,-21.8939 15.5441,-21.4346 15.4431,-21.0361 C15.3327,-20.6005 15.3183,-20.2317 15.3434,-19.8106 C15.3816,-19.1685 15.5434,-18.4714 15.8654,-17.7963 C16.0761,-17.3544 16.3178,-16.9476 16.7785,-16.476 C17.0625,-16.1853 17.4349,-15.8867 17.8774,-15.6247 C18.7463,-15.1104 19.7577,-14.793 20.6873,-14.7218 C21.0156,-14.6967 21.3113,-14.6978 21.6494,-14.7517 C21.722,-14.7633 21.7978,-14.778 21.8764,-14.7968 C22.2949,-14.897 22.8093,-15.1596 23.1539,-15.5528 C23.4927,-15.9396 23.6695,-16.3756 23.7827,-16.7983 C24.0328,-17.7314 24.011,-18.7092 24.0406,-19.6647 C24.0756,-20.7977 24.1868,-21.8602 24.5675,-22.4721 C24.8348,-22.9015 25.1881,-23.1407 25.7962,-23.2721 C26.004,-23.317 26.2518,-23.3481 26.5403,-23.3575 C27.5327,-23.3898 28.8245,-23.1429 29.8676,-22.5915 C30.5533,-22.229 31.1241,-21.743 31.4601,-21.1474 C31.6382,-20.8316 31.7495,-20.4857 31.8175,-20.1447 C31.9499,-19.4798 31.9366,-18.7396 31.8313,-18.0122 C31.6275,-16.6041 31.0391,-15.1502 30.4718,-14.3252 C29.9964,-13.634 29.5351,-13.3076 28.9847,-13.2194 C28.3875,-13.1236 27.6007,-13.3635 26.7556,-13.7123 C26.0401,-14.0075 25.3063,-14.3807 24.4441,-14.455 C24.0594,-14.4881 23.6073,-14.4421 23.2007,-14.2456 C22.8584,-14.0802 22.5956,-13.8674 22.3216,-13.5 C22.2397,-13.3903 22.1595,-13.2675 22.0813,-13.1281 C21.6982,-12.4451 21.4592,-11.5641 21.4646,-10.5955 C21.4678,-10.0241 21.5366,-9.45884 21.8102,-8.77598 C21.9937,-8.31786 22.2919,-7.81244 22.6706,-7.35126 C23.2549,-6.63974 23.9945,-6.04297 24.7481,-5.6606 C25.0418,-5.51157 25.3142,-5.39928 25.6505,-5.31898 C25.7137,-5.30389 25.78,-5.29011 25.8493,-5.27838 C26.2775,-5.20598 26.8567,-5.24552 27.3317,-5.47594 C27.8353,-5.72019 28.1838,-6.09052 28.4648,-6.4737 C29.0538,-7.27693 29.4125,-8.22935 29.819,-9.11929 C30.2762,-10.1204 30.7861,-11.0024 31.3613,-11.3804 C31.7525,-11.6375 32.151,-11.7119 32.7335,-11.6059 C33.0964,-11.5398 33.5846,-11.3755 34.092,-11.1169 C35.2452,-10.529 36.4651,-9.48238 36.9497,-8.345 C37.0505,-8.1085 37.1178,-7.88244 37.1508,-7.62949 C37.163,-7.53623 37.1718,-7.42497 37.1706,-7.2938 C37.1677,-6.95884 37.0716,-6.45163 36.8752,-5.97226 C36.5272,-5.12314 35.9239,-4.29474 35.2239,-3.58692 C35.0666,-3.42795 34.9246,-3.29267 34.7322,-3.12478 C34.4711,-2.89705 34.0862,-2.58943 33.6624,-2.34137 C33.3246,-2.14368 32.9627,-1.98833 32.6218,-1.91858 C31.9757,-1.78637 31.3829,-1.95303 30.7329,-2.38397 C30.0989,-2.80422 29.4775,-3.45959 28.6828,-3.94819 C28.2314,-4.22567 27.6696,-4.45091 27.0567,-4.41277 C26.5634,-4.38207 26.111,-4.18405 25.7539,-3.9447 C25.2206,-3.58726 24.8466,-3.17218 24.499,-2.67358 C24.1936,-2.23561 23.9209,-1.70351 23.7489,-1.16528 C23.5669,-0.595693 23.5164,-0.0994612 23.5121,0.263411 `;
+const SVG_P4_D=`M71.899,-72.3035 C73.586,-71.0425 75.3493,-70.3936 76.8216,-70.5978 C78.3076,-70.7849 79.5012,-71.8231 80.4594,-73.4373 C81.4237,-75.0428 82.174,-77.2015 82.9116,-79.4223 C83.6477,-81.643 84.384,-83.9107 85.286,-85.7289 C86.1783,-87.5562 87.2552,-88.9136 88.4219,-89.5464 C89.5799,-90.1927 90.7933,-90.1236 91.6406,-89.5011 C92.5006,-88.8827 92.9669,-87.7285 93.0632,-86.2731 C93.1697,-84.8185 92.9285,-83.0644 92.6226,-81.2781 C92.3179,-79.4918 91.9674,-77.6711 91.8994,-76.0676 C91.8233,-74.4634 92.0432,-73.089 92.6474,-72.2212 C93.2434,-71.3413 94.2114,-70.9936 95.3983,-71.1065 C96.5835,-71.2042 97.9792,-71.7451 99.4143,-72.1989 C100.848,-72.6557 102.326,-72.9768 103.629,-72.7102 C104.93,-72.4657 106.049,-71.6108 106.682,-70.3344 C107.319,-69.0711 107.444,-67.452 106.87,-66.1208 C106.312,-64.7707 105.054,-63.7383 103.373,-62.999 C101.7,-62.249 99.6272,-61.756 97.6198,-61.2589 C95.6114,-60.7628 93.6845,-60.2423 92.2893,-59.4391 C90.8845,-58.6495 90.0293,-57.5533 89.9056,-56.2795 C89.7699,-55.0163 90.3524,-53.6209 91.4621,-52.5996 C92.5698,-51.5637 94.1883,-50.9312 96.1102,-50.6924 C98.0322,-50.4424 100.26,-50.5622 102.577,-50.7697 C104.894,-50.9743 107.3,-51.2506 109.593,-51.2187 C111.886,-51.1925 114.067,-50.8442 115.946,-49.9738 C117.826,-49.1177 119.406,-47.7117 120.53,-45.8925 C121.655,-44.0907 122.317,-41.915 122.391,-40.1283 C122.473,-38.3248 121.96,-36.9747 120.938,-36.2719 C119.922,-35.5461 118.404,-35.4369 116.654,-35.4763 C114.907,-35.5113 112.935,-35.6611 111.084,-35.372 C109.233,-35.0959 107.511,-34.3335 106.24,-32.8218 C104.963,-31.3397 104.146,-29.114 103.986,-26.8241 C103.818,-24.5354 104.31,-22.2713 105.427,-20.7339 C106.537,-19.1699 108.265,-18.3419 110.377,-18.1088 C112.486,-17.8618 114.971,-18.1689 117.497,-18.5529 C120.023,-18.9366 122.584,-19.379 124.836,-19.3897 C127.091,-19.4135 129.031,-18.966 130.398,-17.8783 C131.771,-16.8172 132.566,-15.118 132.711,-13.4309 C132.863,-11.7444 132.368,-10.1659 131.371,-9.41471 C130.378,-8.63023 128.889,-8.68255 127.157,-9.19633 C125.426,-9.69701 123.455,-10.6032 121.553,-11.2736 C119.65,-11.9532 117.818,-12.3433 116.344,-11.9659 C114.866,-11.6186 113.755,-10.5055 113.231,-9.13591 C112.699,-7.76784 112.763,-6.23013 113.378,-5.0378 C113.984,-3.82381 115.132,-2.95132 116.515,-2.2363 C117.894,-1.51562 119.494,-0.913076 120.918,-0.14789 C122.344,0.606979 123.583,1.56236 124.299,2.77418 C125.025,3.96939 125.21,5.37937 124.758,6.4269 C124.319,7.49186 123.244,8.14277 121.856,8.44142 C120.475,8.75435 118.801,8.75702 117.327,8.88293 C115.848,9.00153 114.591,9.29264 113.94,10.0183 C113.277,10.7251 113.226,11.8423 113.783,12.9757 C114.33,14.1157 115.472,15.2255 116.942,16.1993 C118.409,17.1828 120.194,18.0507 121.931,18.9607 C123.669,19.8716 125.351,20.8385 126.641,22.0352 C127.937,23.2247 128.83,24.668 129.13,26.3705 C129.44,28.058 129.157,29.9991 128.398,31.7181 C127.644,33.4383 126.433,34.8865 125.039,35.6238 C123.643,36.3783 122.073,36.4168 120.519,35.8335 C118.963,35.2603 117.424,34.0868 116.025,32.6524 C114.624,31.2209 113.366,29.5412 112.28,28.0412 C111.19,26.5364 110.273,25.226 109.456,24.4002 C108.637,23.5655 107.909,23.2166 107.12,23.3925 C106.333,23.5614 105.476,24.2479 104.493,25.3035 C103.519,26.3553 102.398,27.7718 101.278,29.3088 C100.17,30.8458 99.0905,32.4896 98.618,33.9748 C98.1322,35.4673 98.3041,36.7907 99.2811,37.905 C100.238,39.0262 101.982,39.9481 104.076,40.8235 C106.162,41.7001 108.569,42.5411 110.671,43.5283 C112.778,44.5115 114.555,45.6532 115.496,47.0304 C116.454,48.3977 116.555,50.0083 115.79,51.6577 C115.041,53.3021 113.464,54.954 111.56,56.224 C109.649,57.5048 107.439,58.3869 105.189,58.8467 C102.933,59.315 100.624,59.3757 98.3881,59.2113 C96.1492,59.0506 93.98,58.673 91.9057,58.37 C89.8311,58.0657 87.8461,57.8452 85.9757,57.9544 C84.1076,58.0574 82.3464,58.5028 80.7655,59.3871 C79.1897,60.2605 77.7961,61.5738 76.8241,63.0934 C75.8493,64.6106 75.3237,66.301 75.425,67.8424 C75.5138,69.3941 76.2331,70.7892 77.3682,72.0462 C78.4967,73.3081 80.0227,74.4508 81.566,75.6081 C83.1093,76.7641 84.6588,77.9444 85.8276,79.2505 C87.0031,80.5486 87.7817,81.9901 87.9563,83.4697 C88.1421,84.9412 87.7273,86.4228 86.8425,87.5055 C85.9626,88.5992 84.628,89.2654 83.0847,89.4729 C81.5417,89.6914 79.7952,89.4683 78.0981,89.0619 C76.3987,88.6589 74.7538,88.0863 73.3545,87.6989 C71.9504,87.3076 70.7974,87.117 69.9552,87.3792 C69.1065,87.6318 68.5681,88.3424 68.2134,89.4851 C67.8551,90.6196 67.6703,92.1775 67.4276,93.907 C67.1863,95.6332 66.8788,97.521 66.3222,99.2302 C65.772,100.941 64.9579,102.463 63.8506,103.496 C62.7544,104.536 61.3699,105.078 60.0198,105.001 C58.6691,104.933 57.3888,104.247 56.4826,103.062 C55.5643,101.882 55.0232,100.21 54.7836,98.2971 C54.5378,96.3859 54.5765,94.2403 54.6732,92.1606 C54.7696,90.0792 54.9134,88.0706 54.8596,86.3906 C54.8118,84.7056 54.5535,83.3559 54.0077,82.4624 C53.4686,81.5625 52.6555,81.1149 51.7117,81.0518 C50.7658,80.9861 49.7018,81.2974 48.5663,81.8591 C47.4283,82.4201 46.2132,83.2294 44.9112,84.1388 C43.6084,85.0489 42.2167,86.0563 40.6997,87.032 C39.1835,88.0098 37.5383,88.9531 35.7487,89.7852 C33.9612,90.6205 32.0274,91.3437 29.9917,91.9682 C27.9583,92.5953 25.8241,93.1269 23.698,93.646 C21.5733,94.1654 19.4587,94.6774 17.4979,95.2746 C15.5375,95.8698 13.7332,96.5536 12.2396,97.3607 C10.7454,98.1636 9.56329,99.0969 8.82716,100.093 C8.08938,101.082 7.80119,102.131 8.05782,102.972 C8.3099,103.814 9.11389,104.418 10.4417,104.535 C11.7632,104.665 13.6066,104.302 15.7601,103.606 C17.9103,102.917 20.3627,101.915 22.821,100.936 C25.2793,99.9575 27.7376,99.0128 29.8996,98.4428 C32.065,97.8658 33.9266,97.6826 35.2762,98.0594 C36.6325,98.4224 37.4721,99.3476 37.7726,100.586 C38.0794,101.819 37.8537,103.329 37.2541,104.714 C36.6565,106.109 35.6926,107.368 34.563,108.42 C33.433,109.479 32.1405,110.344 30.879,111.094 C29.6149,111.847 28.3867,112.49 27.3171,113.175 C26.2428,113.857 25.3307,114.589 24.574,115.458 C23.8125,116.322 23.2025,117.324 22.5964,118.422 C21.9895,119.516 21.3761,120.703 20.5862,121.854 C19.8003,123.004 18.8291,124.115 17.6129,125.028 C16.4057,125.942 14.9412,126.654 13.3937,127.026 C11.853,127.402 10.2617,127.433 9.05887,127.068 C7.84297,126.708 7.04172,125.952 6.64827,124.889 C6.24375,123.83 6.22566,122.47 6.30262,120.979 C6.37758,119.489 6.53009,117.873 6.40711,116.319 C6.29098,114.763 5.88371,113.273 5.02802,111.986 C4.18266,110.696 2.89168,109.608 1.29676,108.773 C-0.29294,107.936 -2.17123,107.35 -4.0544,107.002 C-5.93907,106.653 -7.81837,106.542 -9.45829,106.629 C-11.1062,106.716 -12.4948,106.997 -13.5808,107.423 C-14.6796,107.85 -15.4901,108.428 -16.3933,109.144 C-17.2921,109.855 -18.3228,110.714 -19.7059,111.547 C-21.0764,112.375 -22.7947,113.166 -24.707,113.618 C-26.6129,114.074 -28.6977,114.179 -30.6508,113.725 C-32.6037,113.28 -34.413,112.256 -35.7543,110.669 C-37.1017,109.098 -37.9706,106.972 -38.2109,104.796 C-38.4588,102.621 -38.0817,100.442 -37.1494,98.7661 C-36.2216,97.0755 -34.7451,95.8941 -32.9067,95.2792 C-31.0707,94.6546 -28.8766,94.5806 -26.5796,94.8764 C-24.2829,95.1675 -21.8878,95.8206 -19.6556,96.5212 C-17.4214,97.2224 -15.3544,97.9594 -13.6665,98.4371 C-11.9746,98.9204 -10.6654,99.1361 -9.84184,98.9445 C-9.01357,98.7606 -8.66968,98.1714 -8.78057,97.2577 C-8.88825,96.3486 -9.44675,95.1235 -10.3412,93.7835 C-11.2342,92.4441 -12.4595,90.9976 -13.8651,89.6649 C-15.2712,88.329 -16.8542,87.1141 -18.4765,86.1516 C-20.1005,85.1839 -21.7629,84.4685 -23.3748,83.9894 C-24.9883,83.5067 -26.5519,83.2554 -28.0209,83.1256 C-29.4913,82.9947 -30.8676,82.9809 -32.1431,82.9415 C-33.4198,82.9031 -34.5963,82.8342 -35.697,82.6201 C-36.7985,82.4093 -37.8248,82.0493 -38.8242,81.5167 C-39.8238,80.9883 -40.7988,80.2885 -41.8082,79.5138 C-42.8167,78.7416 -43.862,77.8995 -44.9755,77.1504 C-46.0868,76.4015 -47.2705,75.7496 -48.5035,75.3624 C-49.7329,74.9732 -51.0106,74.854 -52.2037,75.1207 C-53.3971,75.3826 -54.4921,76.0341 -55.3591,77.0596 C-56.2316,78.0803 -56.8731,79.4718 -57.3248,81.0849 C-57.7797,82.6956 -58.0519,84.5223 -58.2643,86.3542 C-58.4777,88.1862 -58.6352,90.0186 -58.8879,91.6445 C-59.139,93.273 -59.4909,94.6895 -60.0513,95.7575 C-60.6079,96.8302 -61.375,97.5527 -62.3558,97.9229 C-63.3332,98.2971 -64.521,98.3233 -65.8313,98.11 C-67.1404,97.898 -68.5677,97.4519 -69.9936,96.9166 C-71.4203,96.3801 -72.8413,95.7599 -74.1587,95.1698 C-75.4788,94.576 -76.6921,94.0164 -77.7796,93.5008 C-78.8699,92.9815 -79.8388,92.5017 -80.7524,91.9567 C-81.6656,91.4113 -82.5294,90.7938 -83.3938,89.9939 C-84.2545,89.1974 -85.1258,88.2084 -85.9712,86.9953 C-86.8097,85.7892 -87.6192,84.3597 -88.1407,82.8939 C-88.6634,81.4289 -88.8725,79.9485 -88.5377,78.6665 C-88.2125,77.3779 -87.3396,76.2918 -85.9869,75.414 C-84.6405,74.532 -82.8253,73.8502 -80.7669,73.2735 C-78.7113,72.6952 -76.4185,72.2181 -74.1947,71.6994 C-71.97,71.1818 -69.8226,70.6167 -68.0322,69.8918 C-66.2374,69.1706 -64.8056,68.2855 -63.893,67.2251 C-62.9744,66.169 -62.5742,64.9397 -62.6773,63.6514 C-62.7762,62.3651 -63.3732,61.0258 -64.343,59.8009 C-65.3111,58.5751 -66.6474,57.4691 -68.1788,56.6295 C-69.7108,55.7862 -71.433,55.215 -73.19,54.9647 C-74.9494,54.7091 -76.7422,54.7742 -78.4827,55.0577 C-80.2253,55.3379 -81.9174,55.8303 -83.5315,56.3415 C-85.1469,56.8524 -86.686,57.3762 -88.1557,57.7114 C-89.6258,58.0493 -91.0283,58.1924 -92.3801,58.0121 C-93.7315,57.8376 -95.0341,57.3338 -96.2909,56.5322 C-97.547,55.7355 -98.7556,54.654 -99.895,53.4818 C-101.035,52.3065 -102.104,51.0511 -103.099,49.7941 C-104.094,48.5339 -105.016,47.2669 -105.872,45.9957 C-106.729,44.7229 -107.521,43.4436 -108.262,42.1166 C-109.003,40.7896 -109.693,39.4112 -110.347,37.9432 C-110.999,36.4769 -111.615,34.9182 -112.197,33.2735 C-112.778,31.6311 -113.326,29.9031 -113.829,28.1641 C-114.333,26.4261 -114.791,24.6816 -115.185,23.0328 C-115.578,21.3831 -115.905,19.8318 -116.138,18.4501 C-116.371,17.0654 -116.509,15.8568 -116.522,14.8285 C-116.535,13.7956 -116.422,12.9385 -116.152,12.1094 C-115.883,11.2825 -115.455,10.4654 -114.859,9.57784 C-114.264,8.69712 -113.501,7.74869 -112.595,6.86475 C-111.69,5.98241 -110.643,5.17807 -109.504,4.6167 C-108.366,4.0516 -107.137,3.73901 -105.89,3.74714 C-104.643,3.74895 -103.377,4.06897 -102.177,4.5809 C-100.976,5.09091 -99.8408,5.78177 -98.8427,6.48521 C-97.8433,7.19277 -96.983,7.89638 -96.3008,8.5205 C-95.6166,9.1534 -95.1108,9.71391 -94.7655,10.4213 C-94.419,11.1267 -94.2308,12.0049 -94.1497,13.1939 C-94.068,14.3752 -94.0933,15.8653 -94.1614,17.5739 C-94.2289,19.2782 -94.3387,21.1921 -94.4079,23.118 C-94.4766,25.043 -94.5061,26.9739 -94.4066,28.6844 C-94.3069,30.3974 -94.0732,31.8829 -93.5904,32.9841 C-93.1118,34.09 -92.3736,34.8107 -91.3839,35.1233 C-90.4002,35.4395 -89.1695,35.3517 -87.8784,34.9333 C-86.5888,34.5165 -85.2499,33.7731 -84.085,32.8189 C-82.9172,31.8643 -81.9312,30.7027 -81.2702,29.4369 C-80.6038,28.1694 -80.2631,26.7984 -80.2343,25.3792 C-80.2016,23.9588 -80.4759,22.4888 -80.9406,20.9909 C-81.4036,19.4922 -82.0527,17.9644 -82.7258,16.4105 C-83.3993,14.8565 -84.0923,13.2752 -84.6587,11.6683 C-85.2278,10.062 -85.6657,8.42881 -85.9011,6.78504 C-86.1409,5.14224 -86.1774,3.4888 -86.0663,1.86949 C-85.9586,0.250705 -85.7077,-1.33234 -85.4609,-2.82025 C-85.215,-4.30849 -84.9782,-5.69987 -84.9222,-6.94425 C-84.8648,-8.18983 -84.9933,-9.28663 -85.4409,-10.2164 C-85.8846,-11.1481 -86.6517,-11.9114 -87.7696,-12.544 C-88.8828,-13.1787 -90.3457,-13.6843 -92.0495,-14.1587 C-93.7502,-14.6338 -95.6872,-15.0811 -97.6688,-15.6152 C-99.6495,-16.1483 -101.67,-16.7716 -103.513,-17.5727 C-105.356,-18.371 -107.017,-19.35 -108.311,-20.5198 C-109.608,-21.6851 -110.532,-23.0464 -110.987,-24.4987 C-111.447,-25.9472 -111.438,-27.4738 -111.009,-28.8338 C-110.582,-30.1988 -109.74,-31.3837 -108.606,-32.3119 C-107.472,-33.2455 -106.051,-33.9297 -104.485,-34.4316 C-102.919,-34.9357 -101.211,-35.2629 -99.4788,-35.5361 C-97.7437,-35.8084 -95.9892,-36.0348 -94.271,-36.32 C-92.5491,-36.6017 -90.8586,-36.9411 -89.1318,-37.3249 C-87.4067,-37.7087 -85.6333,-38.1276 -83.8021,-38.5747 C-81.975,-39.0236 -80.092,-39.5026 -78.2646,-40.0633 C-76.439,-40.6237 -74.6747,-41.2705 -73.1254,-42.0415 C-71.5755,-42.81 -70.245,-43.7072 -69.2739,-44.7109 C-68.2999,-45.71 -67.69,-46.8187 -67.5028,-47.884 C-67.3118,-48.9477 -67.541,-49.9511 -68.1349,-50.6722 C-68.7271,-51.4001 -69.6798,-51.8371 -70.8996,-51.9825 C-72.1188,-52.1329 -73.6042,-52.0006 -75.2425,-51.7106 C-76.8809,-51.4226 -78.6705,-50.9822 -80.4986,-50.5719 C-82.3274,-50.1605 -84.1935,-49.7857 -86.0023,-49.5956 C-87.8121,-49.4022 -89.5647,-49.3951 -91.1948,-49.6266 C-92.8254,-49.8549 -94.3352,-50.3203 -95.6729,-50.9906 C-97.0104,-51.6586 -98.1769,-52.5297 -99.1143,-53.5083 C-100.051,-54.4854 -100.76,-55.569 -101.162,-56.6243 C-101.563,-57.6801 -101.647,-58.6981 -101.31,-59.5427 C-100.978,-60.3927 -100.219,-61.0641 -99.1176,-61.5896 C-98.0208,-62.119 -96.59,-62.5098 -95.0337,-62.8999 C-93.4784,-63.2906 -91.8047,-63.6868 -90.2467,-64.2455 C-88.6859,-64.8017 -87.2487,-65.5274 -86.0949,-66.5107 C-84.9354,-67.4889 -84.0617,-68.7265 -83.4713,-70.1654 C-82.8762,-71.6002 -82.5598,-73.2315 -82.3889,-74.889 C-82.2159,-76.5451 -82.1831,-78.2219 -82.1013,-79.7122 C-82.0202,-81.2037 -81.8847,-82.5033 -81.5211,-83.4374 C-81.1607,-84.3756 -80.567,-84.9433 -79.6554,-85.0755 C-78.7485,-85.2131 -77.5237,-84.9156 -76.031,-84.2703 C-74.5418,-83.6287 -72.7888,-82.6438 -70.9152,-81.5059 C-69.0433,-80.3696 -67.0546,-79.0845 -65.1364,-77.8861 C-63.2178,-76.6871 -61.3734,-75.5791 -59.7819,-74.7823 C-58.1883,-73.9827 -56.8517,-73.499 -55.8935,-73.4788 C-54.9314,-73.4538 -54.3505,-73.8955 -54.1623,-74.8181 C-53.9699,-75.7357 -54.1684,-77.1319 -54.6522,-78.8798 C-55.1334,-80.6246 -55.8961,-82.7165 -56.7655,-84.9457 C-57.6341,-87.174 -58.606,-89.5352 -59.4836,-91.7927 C-60.3622,-94.0513 -61.1431,-96.2019 -61.6552,-98.0401 C-62.1701,-99.8817 -62.4124,-101.406 -62.2838,-102.498 C-62.1596,-103.595 -61.6622,-104.257 -60.8158,-104.515 C-59.9736,-104.779 -58.7857,-104.643 -57.3966,-104.288 C-56.0092,-103.936 -54.4265,-103.371 -52.8408,-102.836 C-51.2541,-102.3 -49.6697,-101.801 -48.2557,-101.561 C-46.8382,-101.316 -45.5968,-101.337 -44.603,-101.739 C-43.6038,-102.135 -42.8524,-102.914 -42.264,-104.012 C-41.6724,-105.106 -41.2357,-106.514 -40.7764,-108.034 C-40.3179,-109.551 -39.8299,-111.173 -39.1652,-112.635 C-38.5055,-114.098 -37.6573,-115.395 -36.5917,-116.279 C-35.5343,-117.166 -34.2648,-117.633 -33.0204,-117.522 C-31.7754,-117.419 -30.5785,-116.735 -29.6379,-115.516 C-28.6905,-114.304 -28.0006,-112.564 -27.5705,-110.514 C-27.136,-108.466 -26.9542,-106.115 -26.9191,-103.757 C-26.882,-101.398 -26.9878,-99.0383 -27.0749,-96.9628 C-27.1625,-94.8836 -27.226,-93.0957 -27.1201,-91.7863 C-27.0172,-90.47 -26.7411,-89.637 -26.2289,-89.2841 C-25.7204,-88.9242 -24.9775,-89.039 -24.0419,-89.4268 C-23.1082,-89.8121 -21.9865,-90.4601 -20.7661,-91.1051 C-19.5454,-91.7525 -18.2304,-92.3865 -16.9029,-92.8059 C-15.5733,-93.2323 -14.2334,-93.4386 -12.9016,-93.4239 C-11.5684,-93.4156 -10.2374,-93.1939 -8.88112,-92.9412 C-7.52651,-92.6901 -6.14224,-92.4173 -4.75772,-92.3419 C-3.37789,-92.2631 -1.98587,-92.3941 -0.713951,-92.877 C0.550857,-93.3519 1.68264,-94.1795 2.29229,-95.2556 C2.91038,-96.3291 2.96763,-97.6329 2.32485,-98.9923 C1.69923,-100.355 0.381273,-101.771 -1.25048,-103.181 C-2.87585,-104.593 -4.78913,-106.005 -6.46372,-107.376 C-8.14272,-108.746 -9.56058,-110.079 -10.2908,-111.313 C-11.0367,-112.543 -11.0783,-113.676 -10.4386,-114.533 C-9.81139,-115.391 -8.535,-115.955 -7.02247,-116.056 C-5.50546,-116.166 -3.77332,-115.809 -2.04741,-115.098 C-0.31668,-114.392 1.41634,-113.345 3.03827,-112.21 C4.66366,-111.076 6.17863,-109.861 7.57185,-108.856 C8.96699,-107.848 10.2443,-107.061 11.4406,-106.7 C12.6374,-106.331 13.7555,-106.396 14.846,-106.896 C15.936,-107.389 17.0004,-108.313 18.074,-109.448 C19.1465,-110.581 20.2289,-111.914 21.3252,-113.145 C22.42,-114.378 23.5305,-115.498 24.6207,-116.245 C25.7087,-117 26.7757,-117.372 27.7213,-117.296 C28.6677,-117.226 29.4806,-116.72 30.0709,-115.922 C30.6671,-115.124 31.038,-114.045 31.2798,-112.797 C31.5246,-111.549 31.6494,-110.129 31.8272,-108.639 C32.0048,-107.149 32.2418,-105.588 32.7063,-104.043 C33.167,-102.497 33.8621,-100.967 34.8523,-99.5364 C35.8369,-98.1062 37.1159,-96.7772 38.5874,-95.6376 C40.0553,-94.4976 41.7093,-93.5481 43.3515,-92.8655 C44.9932,-92.1817 46.6172,-91.7661 48.0122,-91.665 C49.4097,-91.5622 50.5718,-91.7753 51.3542,-92.3051 C52.142,-92.8325 52.5459,-93.6773 52.5738,-94.776 C52.6074,-95.8725 52.2684,-97.2213 51.7289,-98.699 C51.1924,-100.176 50.4625,-101.779 49.7892,-103.357 C49.1156,-104.936 48.5049,-106.489 48.1991,-107.87 C47.8898,-109.254 47.8925,-110.464 48.3554,-111.396 C48.812,-112.33 49.7318,-112.986 51.0849,-113.33 C52.4322,-113.676 54.2084,-113.712 56.2245,-113.471 C58.2378,-113.232 60.4849,-112.718 62.7,-112.002 C64.9151,-111.286 67.0923,-110.369 68.9652,-109.336 C70.841,-108.302 72.4067,-107.153 73.4757,-105.957 C74.5505,-104.759 75.1224,-103.516 75.1618,-102.253 C75.2087,-100.989 74.7241,-99.7033 73.8953,-98.3604 C73.0713,-97.0168 71.9115,-95.6118 70.7323,-94.0896 C69.5534,-92.5686 68.3652,-90.9253 67.4961,-89.1348 C66.6229,-87.3478 66.0756,-85.4115 66.058,-83.4023 C66.0318,-81.3984 66.5498,-79.3125 67.6036,-77.3459 C68.6446,-75.3863 70.2134,-73.5574 71.899,-72.3035 `;
+STOCK_PROFILES['p2']=parseSVGPath(SVG_P2_D,0,0,1,481);
+STOCK_PROFILES['p3']=parseSVGPath(SVG_P3_D,0,0,1,481);
+STOCK_PROFILES['p4']=parseSVGPath(SVG_P4_D,0,0,1,481);
+
+buildProfileGrid();
+updateZoneUI();
+rebuildMesh();
+setTimeout(()=>document.getElementById('loading').classList.add('gone'),900);
+
+// Convenience: make A accessible for SVG import sizing
+const A=360; // default angular samples for import
+
+</script>
+</body>
+</html>
