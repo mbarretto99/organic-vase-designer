@@ -188,7 +188,7 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
         <div class="sec-hd" data-s="layout">Zone Layout <span class="chev">▾</span></div>
         <div class="sec-bd" id="bd-layout">
           <div class="cr"><div class="cl"><span>Middle Zone Height</span><span class="v" id="v-midpos">50%</span></div><input type="range" id="sl-midpos" min="10" max="90" value="50" step="1"/></div>
-          <div class="cr"><div class="cl"><span>Blend Width</span><span class="v" id="v-blend">50%</span></div><input type="range" id="sl-blend" min="0" max="100" value="50" step="1"/></div>
+          <div class="cr"><div class="cl"><span>Blend Width</span><span class="v" id="v-blend">0%</span></div><input type="range" id="sl-blend" min="0" max="100" value="0" step="1"/></div>
           <label class="ck"><input type="checkbox" id="ck-morph-match"/> Match-point morphing (vs linear resample)</label>
           <!-- Amplitude curve preview -->
           <canvas id="amp-preview" width="300" height="50" style="width:100%;border-radius:4px;border:1px solid var(--border);background:#12141E"></canvas>
@@ -359,6 +359,54 @@ import { zipSync, strToU8 } from 'fflate';
 // ═══════════════════════════════════════════════════════════════════
 
 // Parse a single SVG cubic bezier path string into sampled points
+// Resample a closed boundary polyline `pts` (ordered along the boundary) to N
+// points uniformly spaced in angle, by ray-casting from the centroid at each
+// angle and taking the farthest boundary intersection. This recovers the true
+// radius r(theta) and preserves fine/organic detail — a polar sort+interpolate
+// smeared detailed shapes into blobs. Robust for shapes star-convex from their
+// centroid; concavities resolve to their outer envelope (correct for a vase wall).
+function resampleAngleRay(pts, N){
+  const n=pts.length;
+  let ox=0,oz=0; for(let i=0;i<n;i++){ox+=pts[i][0];oz+=pts[i][1];} ox/=n; oz/=n;
+  // For each uniform angle, cast a ray from the centroid and take the farthest
+  // boundary hit = the true radius r(theta). Count crossings per ray: a ray that
+  // hits >1 time means the shape is NOT star-convex, and the farthest-hit r(theta)
+  // then has kinks (sharp corners) wherever the selected hit jumps between arcs.
+  const radii=new Array(N);
+  let maxCross=1;
+  for(let i=0;i<N;i++){
+    const angle=-Math.PI+(i/N)*2*Math.PI;
+    const dx=Math.cos(angle), dz=Math.sin(angle);
+    let bestR=0, cross=0;
+    for(let j=0;j<n;j++){
+      const Ax=pts[j][0]-ox,    Az=pts[j][1]-oz;
+      const Bx=pts[(j+1)%n][0]-ox, Bz=pts[(j+1)%n][1]-oz;
+      const Ex=Bx-Ax, Ez=Bz-Az;
+      const det=Ex*dz-Ez*dx;
+      if(det>-1e-9 && det<1e-9) continue;       // parallel — no hit
+      const t=(Ex*Az-Ez*Ax)/det;                // distance along ray
+      const u=(dx*Az-dz*Ax)/det;                // param along segment
+      if(t>=0 && u>=0 && u<=1){ cross++; if(t>bestR) bestR=t; }
+    }
+    if(cross>maxCross) maxCross=cross;
+    radii[i]=bestR;
+  }
+  // Non-star-convex shapes get a light Gaussian smooth over the radius to round
+  // the branch-jump kinks into smooth curves. Star-convex profiles (maxCross==1,
+  // e.g. the organic star) are left untouched so they stay crisp.
+  if(maxCross>1){
+    const R=Math.max(3, Math.round(N*0.02));
+    const kern=[]; for(let k=-R;k<=R;k++) kern.push(Math.exp(-k*k/(2*(R*0.5)*(R*0.5))));
+    const wsum=kern.reduce((a,b)=>a+b,0);
+    const sm=new Array(N);
+    for(let i=0;i<N;i++){ let s=0; for(let k=-R;k<=R;k++) s+=radii[(i+k+N)%N]*kern[k+R]; sm[i]=s/wsum; }
+    for(let i=0;i<N;i++) radii[i]=sm[i];
+  }
+  const out=new Array(N);
+  for(let i=0;i<N;i++){ const angle=-Math.PI+(i/N)*2*Math.PI; out[i]=[Math.cos(angle)*radii[i], Math.sin(angle)*radii[i]]; }
+  return out;
+}
+
 function parseSVGPath(pathStr, cx=0, cz=0, scale=1, samples=480) {
   // Tokenise the path
   const nums = s => s.match(/-?[\d.]+(?:e[+-]?\d+)?/gi)?.map(Number) || [];
@@ -418,23 +466,10 @@ function parseSVGPath(pathStr, cx=0, cz=0, scale=1, samples=480) {
   const centred = txPts.map(([x,z])=>{const dx=x-mx,dz=z-mz;maxR=Math.max(maxR,Math.sqrt(dx*dx+dz*dz));return[dx,dz];});
   const normed = centred.map(([x,z])=>[x/(maxR||1), z/(maxR||1)]);
 
-  // Resample to exactly `samples` points by angular interpolation
-  // Convert to polar, sort by angle, then resample
-  const polar = normed.map(([x,z])=>{const a=Math.atan2(z,x),r=Math.sqrt(x*x+z*z);return{a,r};});
-  polar.sort((a,b)=>a.a-b.a);
-
-  const result=[];
-  for(let i=0;i<samples;i++){
-    const angle = -Math.PI + (i/samples)*2*Math.PI;
-    // Find surrounding points
-    let lo=0,hi=polar.length-1;
-    for(let j=0;j<polar.length-1;j++){if(polar[j].a<=angle&&polar[j+1].a>angle){lo=j;hi=j+1;break;}}
-    const a0=polar[lo].a,a1=polar[hi].a;
-    const t2=(a1-a0)>0?(angle-a0)/(a1-a0):0;
-    const r=polar[lo].r+(polar[hi].r-polar[lo].r)*Math.max(0,Math.min(1,t2));
-    result.push([Math.cos(angle)*r, Math.sin(angle)*r]);
-  }
-  return result;
+  // Resample to `samples` points uniformly spaced in ANGLE by ray-casting from
+  // the centroid — recovers the true boundary radius r(theta). (A polar
+  // sort+interpolate turned fine/organic shapes into blobs.)
+  return resampleAngleRay(normed, samples);
 }
 
 // Generate profile points for parametric (wave) profile
@@ -631,22 +666,10 @@ const SVG_PATHS = {
 // Pre-parse stock profiles (will be done on init)
 const STOCK_PROFILES = {};
 
-// Resample a profile to exactly N points using angular interpolation
+// Resample a profile to exactly N points uniformly spaced in angle (ray-cast)
 function resampleProfile(pts, N) {
   if(pts.length===N) return pts;
-  const polar=pts.map(([x,z])=>({a:Math.atan2(z,x),r:Math.sqrt(x*x+z*z)}));
-  polar.sort((a,b)=>a.a-b.a);
-  const result=[];
-  for(let i=0;i<N;i++){
-    const angle=-Math.PI+(i/N)*2*Math.PI;
-    let lo=polar.length-1,hi=0;
-    for(let j=0;j<polar.length;j++){if(polar[j].a<=angle){lo=j;hi=(j+1)%polar.length;}}
-    const a0=polar[lo].a,a1=polar[hi].a+(polar[hi].a<polar[lo].a?2*Math.PI:0);
-    const tt=(a1-a0)>0.0001?(angle+(angle<a0?2*Math.PI:0)-a0)/(a1-a0):0;
-    const r=polar[lo].r+(polar[hi].r-polar[lo].r)*Math.max(0,Math.min(1,tt));
-    result.push([Math.cos(angle)*r,Math.sin(angle)*r]);
-  }
-  return result;
+  return resampleAngleRay(pts, N);
 }
 
 function getProfilePoints(profileDef, samples=480) {
@@ -679,7 +702,7 @@ const state = {
   wall: 2.5,
   baseThick: 3.0,
   midPos: 0.5,
-  blend: 50,
+  blend: 0,
   morphMatch: false,
   phase: 0,
   bot: defaultZone('bot'),
@@ -1682,7 +1705,7 @@ document.getElementById('btn-open').addEventListener('click',()=>{
 });
 document.getElementById('btn-new').addEventListener('click',()=>{
   if(confirm('Start new? Unsaved changes will be lost.')){
-    Object.assign(state,{height:200,wall:2.5,baseThick:3,midPos:0.5,blend:50,morphMatch:false,phase:0,bot:defaultZone('bot'),mid:defaultZone('mid'),top:defaultZone('top'),resolution:'standard',showFloor:true,showXS:false,seed:Math.floor(Math.random()*99999),
+    Object.assign(state,{height:200,wall:2.5,baseThick:3,midPos:0.5,blend:0,morphMatch:false,phase:0,bot:defaultZone('bot'),mid:defaultZone('mid'),top:defaultZone('top'),resolution:'standard',showFloor:true,showXS:false,seed:Math.floor(Math.random()*99999),
       topAdj:{tilt:0,curve:2,mode:'linear'},
       waves:{enabled:false,linked:true,activeTab:'top',top:{ripple:12,amp:6,sharp:20,org:0,shape:'sine'},bot:{ripple:12,amp:6,sharp:20,org:0,shape:'sine'}}});
     state.bot.scale=60;state.mid.scale=70;state.top.scale=80;
