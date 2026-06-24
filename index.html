@@ -889,11 +889,14 @@ function crossSectionAt(t, s, profilePtsCache) {
   // Weighted twist at this height
   const twist = (midTwistDeg * wMid * tAccMid + topTwistDeg * wTop * tAcc) + s.phase;
 
-  // PROFILE MORPH: middle zone has no profile — pure bot→top linear morph
-  const pBot=profilePtsCache.bot, pTop=profilePtsCache.top;
-  // Parameter for bot→top morph: when wTop=0 we're all-bot, when wBot=0 we're all-top
-  const morphT = wBot+wTop > 0 ? wTop/(wBot+wTop) : 0;
-  const morphed = morphProfiles(pBot, pTop, morphT, method);
+  // PROFILE MORPH: 3-way bot → mid → top. morphPos runs 0→1 with height
+  // (= the Bernstein parameter u); lower half blends bot→mid, upper half mid→top.
+  // In Organic mode bot/mid/top are the same profile, so this is an identity.
+  const pBot=profilePtsCache.bot, pMid=profilePtsCache.mid, pTop=profilePtsCache.top;
+  const morphPos = wMid*0.5 + wTop;  // 0=bot, 0.5=mid, 1=top
+  const morphed = morphPos<=0.5
+    ? morphProfiles(pBot, pMid, morphPos*2, method)
+    : morphProfiles(pMid, pTop, (morphPos-0.5)*2, method);
 
   // SCALE: each zone's width = vasWidth × (1 + scale%/100); 0% = VAS width.
   // scale% is the percent CHANGE from VAS width (− narrower, + wider).
@@ -1080,70 +1083,42 @@ function buildGeometry(s) {
       else      indices.push(b,b+2,b+1,b,b+3,b+2);
     }
   }
-  addStrip(outerV,false);
-  addStrip(innerV,true);
+  addStrip(outerV,false);  // outer wall (full height)
 
-  // BASE — fills upward inside the vase from y=0 to y=baseThick
-  // The inner wall of the vase at the base level defines the plug edge.
-  // We need the inner profile at the base level for the plug top face.
-  // innerV[0] = inner wall at y=0 (bottom of vase)
-  // We build an inner plug at y=baseThick by scaling down innerV[0] slightly
-  // (same shape, inset by wall thickness so it sits flush)
-  // Actually: the plug top is simply the same inner profile at y=baseThick —
-  // we get this by sampling crossSectionAt a small t above 0.
+  // Inner wall starts at the base-thickness height — the base (y=0..baseT) is solid,
+  // so the cavity/inner wall only exists above y=baseT. (The old code ran the inner
+  // wall through the plug, creating overlapping non-manifold faces that strict slicers
+  // reject as "geometry not defined".)
+  const viBase = Math.max(1, Math.min(V-1, Math.round(baseT/H*V)));
+  for(let vi=viBase;vi<V;vi++) for(let ai=0;ai<A;ai++){
+    const p00=innerV[vi][ai],p10=innerV[vi][ai+1],p01=innerV[vi+1][ai],p11=innerV[vi+1][ai+1];
+    const b=positions.length/3;
+    for(const p of[p00,p10,p11,p01]){positions.push(p[0],p[1],p[2]);normals.push(0,0,0);}
+    indices.push(b,b+2,b+1, b,b+3,b+2);  // flipped (faces the cavity)
+  }
 
-  // Build plug top points: inner wall profile at y=baseThick
-  // Use the same inner wall logic applied at t=baseThick/H
-  const plugT = Math.min(baseT/H, 0.02); // normalised height of plug top
-  const plugCS = crossSectionAt(plugT, s, profilePtsCache);
-  const plugInner = plugCS.map(([px,pz])=>{
-    const rO=Math.sqrt(px*px+pz*pz);
-    const rI=Math.max(3,rO-wallT);
-    const nx2=px/(rO||1), nz2=pz/(rO||1);
-    return [nx2*rI, baseT, nz2*rI];
-  });
-
+  // Bottom cap — solid disc at y=0 (outer edge → centre), facing down
   for(let ai=0;ai<A;ai++){
-    const oB0=outerV[0][ai],  oB1=outerV[0][ai+1];
-    const iB0=innerV[0][ai],  iB1=innerV[0][ai+1];
-    const pI0=plugInner[ai],  pI1=plugInner[ai+1];
-
-    // 1. Bottom face — flat disc at y=0, from outer edge inward to centre
-    //    Outer ring quad (outer wall bottom to inner wall bottom, facing down)
-    let b=positions.length/3;
-    for(const p of[oB0,oB1,iB1,iB0]){positions.push(p[0],p[1],p[2]);normals.push(0,-1,0);}
-    indices.push(b,b+2,b+1, b,b+3,b+2);
-    // Centre triangle fill at y=0 (solid disc)
-    b=positions.length/3;
-    positions.push(0,0,0);normals.push(0,-1,0);
-    positions.push(iB1[0],0,iB1[2]);normals.push(0,-1,0);
-    positions.push(iB0[0],0,iB0[2]);normals.push(0,-1,0);
-    indices.push(b,b+2,b+1);
-
-    // 2. Plug inner wall — vertical ring inside the vase from y=0 to y=baseThick
-    //    Follows the inner profile, going upward
-    b=positions.length/3;
-    for(const p of[iB0,iB1,pI1,pI0]){positions.push(p[0],p[1],p[2]);normals.push(0,0,0);}
-    indices.push(b,b+2,b+1, b,b+3,b+2);
-
-    // 3. Plug top face — built as a fan AFTER the loop (see below)
-  }
-  // Plug top cap: fan from centroid of plugInner to each edge pair
-  {
-    let cx=0,cz=0;
-    for(let ai=0;ai<A;ai++){cx+=plugInner[ai][0];cz+=plugInner[ai][2];}
-    cx/=A; cz/=A;
-    for(let ai=0;ai<A;ai++){
-      const pI0=plugInner[ai], pI1=plugInner[(ai+1)%A];
-      const b=positions.length/3;
-      positions.push(cx,baseT,cz);          normals.push(0,1,0);
-      positions.push(pI0[0],pI0[1],pI0[2]); normals.push(0,1,0);
-      positions.push(pI1[0],pI1[1],pI1[2]); normals.push(0,1,0);
-      indices.push(b,b+1,b+2);
-    }
+    const oB0=outerV[0][ai], oB1=outerV[0][ai+1];
+    const b=positions.length/3;
+    positions.push(oB0[0],0,oB0[2]); normals.push(0,-1,0);
+    positions.push(oB1[0],0,oB1[2]); normals.push(0,-1,0);
+    positions.push(0,0,0);           normals.push(0,-1,0);
+    indices.push(b,b+1,b+2);
   }
 
-  // Top rim annular band
+  // Cavity floor — solid disc at y=baseT (inner edge → centre), facing up.
+  // Uses the inner wall's bottom ring (innerV[viBase]) so it shares verts → manifold.
+  for(let ai=0;ai<A;ai++){
+    const i0=innerV[viBase][ai], i1=innerV[viBase][ai+1];
+    const b=positions.length/3;
+    positions.push(0,i0[1],0);         normals.push(0,1,0);
+    positions.push(i0[0],i0[1],i0[2]); normals.push(0,1,0);
+    positions.push(i1[0],i1[1],i1[2]); normals.push(0,1,0);
+    indices.push(b,b+1,b+2);
+  }
+
+  // Top rim — annulus sealing the wall thickness at y=H
   for(let ai=0;ai<A;ai++){
     const oT0=outerV[V][ai],oT1=outerV[V][ai+1];
     const iT0=innerV[V][ai],iT1=innerV[V][ai+1];
@@ -1354,18 +1329,11 @@ document.querySelectorAll('.ztab').forEach(tab=>{
 });
 
 function setMidMode(isMid){
-  const organic = state.mode==='organic';
-  // RPA: mid zone has no profile of its own (pure bot→top morph) → hide picker.
-  // Organic: profile is shared/global → always show it.
-  const hideProfile = isMid && !organic;
-  document.getElementById('profile-grid').style.display = hideProfile ? 'none' : 'grid';
-  document.getElementById('btn-import-svg').style.display = hideProfile ? 'none' : 'block';
-  document.getElementById('custom-controls').style.display = 'none';
-  document.getElementById('polygon-controls').style.display = 'none';
-  document.getElementById('ellipse-controls').style.display = 'none';
-  const lbl = document.getElementById('profile-shape-lbl');
-  if(lbl) lbl.style.display = hideProfile ? 'none' : 'block';
-  // Show mid-specific bulge/pinch control
+  // Every zone now has its own profile (RPA: per-zone; Organic: shared), so the
+  // profile picker is always visible. The mid bulge/pinch note shows for mid only.
+  document.getElementById('profile-grid').style.display='grid';
+  document.getElementById('btn-import-svg').style.display='block';
+  const lbl=document.getElementById('profile-shape-lbl'); if(lbl) lbl.style.display='block';
   document.getElementById('mid-modifier').style.display = isMid ? 'flex' : 'none';
 }
 
@@ -1385,19 +1353,16 @@ function updateZoneUI(){
   document.getElementById('sl-twacc').value=z.twistAcc;
   document.getElementById('v-twacc').textContent=`${Math.round(z.twistAcc)}%`;
   const isMid=(activeZone==='mid');
-  const organic=state.mode==='organic';
   setMidMode(isMid);
-  // Profile panel: global in Organic (shown for every zone); RPA only for non-mid
-  if(!isMid || organic){
-    updateProfileUI();
-    const type=z.profile?z.profile.type:'wave';
-    document.querySelectorAll('.pcard').forEach(c=>c.classList.remove('on'));
-    let matchKey='custom';
-    profileDefsForMode().forEach(d=>{if(JSON.stringify(d.pd)===JSON.stringify(z.profile))matchKey=d.key;});
-    const mc=document.querySelector(`.pcard[data-key="${matchKey}"]`);
-    if(mc)mc.classList.add('on');
-    showProfileControls(type);
-  }
+  // Profile panel: every zone has its own profile now (RPA per-zone, Organic shared)
+  updateProfileUI();
+  const type=z.profile?z.profile.type:'wave';
+  document.querySelectorAll('.pcard').forEach(c=>c.classList.remove('on'));
+  let matchKey='custom';
+  profileDefsForMode().forEach(d=>{if(JSON.stringify(d.pd)===JSON.stringify(z.profile))matchKey=d.key;});
+  const mc=document.querySelector(`.pcard[data-key="${matchKey}"]`);
+  if(mc)mc.classList.add('on');
+  showProfileControls(type);
 }
 
 function updateProfileUI(){
