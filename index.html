@@ -705,6 +705,18 @@ function morphProfiles(pA, pB, t, method) {
   });
 }
 
+// C1 3-way morph: Catmull-Rom (via spline3) through bot→mid→top profile points.
+// Replaces the old staged bot→mid / mid→top blend, which kinked at the mid zone.
+// For RPA all profiles share uniform-angular sampling, so per-point (x,z) spline3 is smooth.
+function morphProfiles3(pBot, pMid, pTop, uf, method){
+  const n=pBot.length, out=new Array(n);
+  for(let i=0;i<n;i++){
+    const a=pBot[i], b=pMid[i], c=pTop[i];
+    out[i]=[spline3(uf,a[0],b[0],c[0]), spline3(uf,a[1],b[1],c[1])];
+  }
+  return out;
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // STOCK SVG PROFILES — embedded path data
 // ═══════════════════════════════════════════════════════════════════
@@ -838,6 +850,14 @@ let lastMinOuterR=Infinity; // min outer radius from last buildGeometry — driv
 // ═══════════════════════════════════════════════════════════════════
 function smoothstep(e0,e1,x){const t=Math.max(0,Math.min(1,(x-e0)/(e1-e0)));return t*t*(3-2*t);}
 
+// Hermite cubic interpolation over a segment (t in [0,1]); m0,m1 are endpoint tangents.
+function hermite(t,p0,p1,m0,m1){const t2=t*t,t3=t2*t;return(2*t3-3*t2+1)*p0+(t3-2*t2+t)*m0+(-2*t3+3*t2)*p1+(t3-t2)*m1;}
+// Catmull-Rom (reflected phantom endpoints) through 3 keyframe values at u=0,0.5,1.
+// C1-smooth across the whole range and has a NON-zero slope at u=0 (curves from the start),
+// unlike a quadratic Bézier (which eases in). Used for radius/twist/morph so the wall leaves
+// the base immediately instead of going "straight up then bending".
+function spline3(u,v0,v1,v2){const m0=v1-v0,m1=(v2-v0)/2,m2=v2-v1;return u<=0.5?hermite(u/0.5,v0,v1,m0*0.5,m1*0.5):hermite((u-0.5)/0.5,v1,v2,m1*0.5,m2*0.5);}
+
 function zoneWeightsAt(t,s){
   // Three control points: bot at t=0, mid at t=midPos, top at t=1
   // Use quadratic Bernstein basis (proper barycentric blend):
@@ -880,23 +900,18 @@ function crossSectionAt(t, s, profilePtsCache) {
   const {wBot,wMid,wTop}=zoneWeightsAt(t,s);
   const method=s.morphMatch?'match':'linear';
 
-  // Independent twist: each zone's twist affects only its own region (no accumulation)
-  const midTwistDeg = s.mid.twist;
-  const topTwistDeg = s.top.twist;
-  // Twist acceleration: squeeze the twist curve upward (higher acc = twists faster near top)
-  const tAcc = Math.pow(t, 1 + (s.top.twistAcc||0)/100);
-  const tAccMid = Math.pow(t, 1 + (s.mid.twistAcc||0)/100);
-  // Weighted twist at this height
-  const twist = (midTwistDeg * wMid * tAccMid + topTwistDeg * wTop * tAcc) + s.phase;
+  // uf: C1 parameter across base→top (= the Bernstein parameter; 0=bot, 0.5=mid, 1=top)
+  const uf = wMid*0.5 + wTop;
+  // Twist: C1 Catmull-Rom through (base=0, mid=midTwist, top=topTwist) + phase.
+  // Non-zero slope at the base → the spiral starts at the ground (no t² ease-in that
+  // made the bottom extrude straight up before twisting).
+  const twist = s.phase + spline3(uf, 0, s.mid.twist, s.top.twist);
 
-  // PROFILE MORPH: 3-way bot → mid → top. morphPos runs 0→1 with height
-  // (= the Bernstein parameter u); lower half blends bot→mid, upper half mid→top.
-  // In Organic mode bot/mid/top are the same profile, so this is an identity.
+  // PROFILE MORPH: C1 Catmull-Rom through bot→mid→top (per point). No kink at the mid
+  // zone — the old staged bot→mid / mid→top blend had a derivative jump there.
+  // In Organic mode all three are the same profile → identity.
   const pBot=profilePtsCache.bot, pMid=profilePtsCache.mid, pTop=profilePtsCache.top;
-  const morphPos = wMid*0.5 + wTop;  // 0=bot, 0.5=mid, 1=top
-  const morphed = morphPos<=0.5
-    ? morphProfiles(pBot, pMid, morphPos*2, method)
-    : morphProfiles(pMid, pTop, (morphPos-0.5)*2, method);
+  const morphed = morphProfiles3(pBot, pMid, pTop, uf, method);
 
   // SCALE: each zone's width = vasWidth × (1 + scale%/100); 0% = VAS width.
   // scale% is the percent CHANGE from VAS width (− narrower, + wider).
