@@ -218,7 +218,16 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
           <!-- Zone scale & twist (shown for active zone) -->
           <div class="cr"><div class="cl"><span id="lbl-scale">Bottom Scale</span><span class="v" id="v-scale">10%</span></div><input type="range" id="sl-scale" min="-90" max="100" value="10" step="1"/></div>
           <div class="cr"><div class="cl"><span id="lbl-twist">Bottom Twist</span><span class="v" id="v-twist">0°</span></div><input type="range" id="sl-twist" min="-360" max="360" value="0" step="5"/></div>
-          <div class="cr"><div class="cl"><span>Twist Acceleration</span><span class="v" id="v-twacc">0%</span></div><input type="range" id="sl-twacc" min="0" max="100" value="0" step="1"/></div>
+          <div class="cr">
+            <div class="cl"><span>Radial Inclination</span><span class="v" id="v-rad">Auto</span></div>
+            <input type="range" id="sl-rad" min="-45" max="45" value="0" step="1" disabled/>
+            <label class="ck" style="margin-top:2px"><input type="checkbox" id="ck-rad-auto" checked/> Auto (smooth)</label>
+          </div>
+          <div class="cr">
+            <div class="cl"><span>Tangential Lead</span><span class="v" id="v-tan">Auto</span></div>
+            <input type="range" id="sl-tan" min="-45" max="45" value="0" step="1" disabled/>
+            <label class="ck" style="margin-top:2px"><input type="checkbox" id="ck-tan-auto" checked/> Auto (smooth)</label>
+          </div>
 
           <div style="height:1px;background:var(--border);margin:2px 0"></div>
 
@@ -757,6 +766,8 @@ function defaultZone(type) {
     scale: type==='bot'?10:type==='mid'?20:-10, // % change from VAS width
     twist: 0,
     twistAcc: 0,
+    radIncl: 'auto',  // wall radial inclination: 'auto' (C1-smooth) or degrees from vertical
+    tanLead: 'auto',  // wall tangential (twist) lead: 'auto' (C1-smooth) or degrees
     profile: { type:'wave', ripple:12, amp:10, sharp:20, org:0, seed:Math.floor(Math.random()*9999) }
   };
 }
@@ -858,6 +869,22 @@ function hermite(t,p0,p1,m0,m1){const t2=t*t,t3=t2*t;return(2*t3-3*t2+1)*p0+(t3-
 // the base immediately instead of going "straight up then bending".
 function spline3(u,v0,v1,v2){const m0=v1-v0,m1=(v2-v0)/2,m2=v2-v1;return u<=0.5?hermite(u/0.5,v0,v1,m0*0.5,m1*0.5):hermite((u-0.5)/0.5,v1,v2,m1*0.5,m2*0.5);}
 
+// Hermite spline through 3 keyframes at y=0, y=yMid, y=H. m0/m1/m2 are d(value)/dy at each
+// keyframe. Used for radius(t) and twist(t) so each zone's wall-leave angle is controllable.
+function hermiteY3(y,yMid,H,v0,v1,v2,m0,m1,m2){
+  if(y<=yMid){const t=y/((yMid)||1);return hermite(t,v0,v1,m0*((yMid)||1),m1*((yMid)||1));}
+  const seg=(H-yMid)||1,t=(y-yMid)/seg;return hermite(t,v1,v2,m1*seg,m2*seg);
+}
+// Catmull-Rom tangents (d(value)/dy) for 3 keyframes at y=0,yMid,H — the "Auto" smooth shape.
+function crT3(yMid,H,v0,v1,v2){return[(v1-v0)/((yMid)||1),(v2-v0)/(H||1),(v2-v1)/((H-yMid)||1)];}
+// Resolve a zone angle control to a d(value)/dy tangent. 'auto'/null → the Auto (Catmull-Rom)
+// tangent; otherwise map the angle (°) to a slope. kind 'r' = radial (tan α), 't' = twist lead.
+function angleTan(ctrl, autoT, kind, H){
+  if(ctrl==='auto'||ctrl==null) return autoT;
+  const a=Math.max(-89,Math.min(89,ctrl))*Math.PI/180;
+  return kind==='r' ? Math.tan(a) : Math.tan(a)*180/((H)||1);
+}
+
 function zoneWeightsAt(t,s){
   // Three control points: bot at t=0, mid at t=midPos, top at t=1
   // Use quadratic Bernstein basis (proper barycentric blend):
@@ -902,10 +929,13 @@ function crossSectionAt(t, s, profilePtsCache) {
 
   // uf: C1 parameter across base→top (= the Bernstein parameter; 0=bot, 0.5=mid, 1=top)
   const uf = wMid*0.5 + wTop;
-  // Twist: C1 Catmull-Rom through (base=0, mid=midTwist, top=topTwist) + phase.
-  // Non-zero slope at the base → the spiral starts at the ground (no t² ease-in that
-  // made the bottom extrude straight up before twisting).
-  const twist = s.phase + spline3(uf, 0, s.mid.twist, s.top.twist);
+  // Height-based Hermite splines for radius & twist so each zone's wall-leave angle is
+  // controllable (Radial Inclination + Tangential Lead). 'auto' = C1 Catmull-Rom.
+  const H = s.height, yMid = s.midPos*H, y = t*H;
+  // Twist through (base=0, mid=midTwist, top=topTwist) + phase; starts at the base.
+  const [tm0,tm1,tm2] = crT3(yMid,H, 0, s.mid.twist, s.top.twist);
+  const twist = s.phase + hermiteY3(y,yMid,H, 0, s.mid.twist, s.top.twist,
+    angleTan(s.bot.tanLead,tm0,'t',H), angleTan(s.mid.tanLead,tm1,'t',H), angleTan(s.top.tanLead,tm2,'t',H));
 
   // PROFILE MORPH: C1 Catmull-Rom through bot→mid→top (per point). No kink at the mid
   // zone — the old staged bot→mid / mid→top blend had a derivative jump there.
@@ -914,17 +944,14 @@ function crossSectionAt(t, s, profilePtsCache) {
   const morphed = morphProfiles3(pBot, pMid, pTop, uf, method);
 
   // SCALE: each zone's width = vasWidth × (1 + scale%/100); 0% = VAS width.
-  // scale% is the percent CHANGE from VAS width (− narrower, + wider).
-  const H = s.height;
   const halfV = s.vasWidth/2;
   const rBot = halfV * (1 + s.bot.scale/100);
   const rTop = halfV * (1 + s.top.scale/100);
-  // Linear interpolation of bot→top radius at this height
-  const rLinear = rBot*wBot/(wBot+wTop||1) + rTop*wTop/(wBot+wTop||1);
-  // Mid scale: 0% = VAS width (neutral), + = bulge, − = pinch
   const midRadius = halfV * (1 + s.mid.scale/100);
-  // Blend: at wMid=0 we use rLinear, at wMid=1 we use midRadius (pure bulge/pinch)
-  const radius = rLinear*(1-wMid) + midRadius*wMid;
+  // Radius as a Hermite spline through (rBot, midRadius, rTop); zone angles shape tangents.
+  const [rm0,rm1,rm2] = crT3(yMid,H, rBot,midRadius,rTop);
+  const radius = hermiteY3(y,yMid,H, rBot,midRadius,rTop,
+    angleTan(s.bot.radIncl,rm0,'r',H), angleTan(s.mid.radIncl,rm1,'r',H), angleTan(s.top.radIncl,rm2,'r',H));
 
   // Apply radius scaling and twist rotation
   const twistRad=(twist*Math.PI/180);
@@ -1187,11 +1214,13 @@ function drawAmpPreview(){
   const rBot=(1+state.bot.scale/100);
   const rMid=(1+state.mid.scale/100);
   const rTop=(1+state.top.scale/100);
+  const yMid=state.midPos;
+  const [rm0,rm1,rm2]=crT3(yMid,1, rBot,rMid,rTop);
   const rMax=Math.max(rBot,rMid,rTop,0.1);
   for(let px=0;px<=W;px++){
     const t=px/W;
-    const{wBot,wMid,wTop}=zoneWeightsAt(t,state);
-    const r=rBot*wBot+rMid*wMid+rTop*wTop;
+    const r=hermiteY3(t,yMid,1, rBot,rMid,rTop,
+      angleTan(state.bot.radIncl,rm0,'r',1), angleTan(state.mid.radIncl,rm1,'r',1), angleTan(state.top.radIncl,rm2,'r',1));
     const py=H2-(r/rMax)*H2*0.9-H2*0.05;
     if(px===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
   }
@@ -1365,8 +1394,9 @@ function updateZoneUI(){
   document.getElementById('v-scale').textContent=`${z.scale}%`;
   document.getElementById('sl-twist').value=z.twist;
   document.getElementById('v-twist').textContent=`${z.twist}°`;
-  document.getElementById('sl-twacc').value=z.twistAcc;
-  document.getElementById('v-twacc').textContent=`${Math.round(z.twistAcc)}%`;
+  // Wall-angle controls (Radial Inclination + Tangential Lead): 'auto' or degrees
+  setAngleUI('rad', z.radIncl);
+  setAngleUI('tan', z.tanLead);
   const isMid=(activeZone==='mid');
   setMidMode(isMid);
   // Profile panel: every zone has its own profile now (RPA per-zone, Organic shared)
@@ -1542,7 +1572,24 @@ wsl('sl-w-org','v-w-org', v=>{
 // Zone sliders (write to activeZone)
 sl('sl-scale','v-scale',v=>state[activeZone].scale=v,       v=>`${Math.round(v)}%`);
 sl('sl-twist','v-twist',v=>state[activeZone].twist=v,       v=>`${Math.round(v)}°`);
-sl('sl-twacc','v-twacc',v=>state[activeZone].twistAcc=v,    v=>`${Math.round(v)}%`);
+
+// Wall-angle controls: Radial Inclination + Tangential Lead. 'Auto' = C1-smooth Catmull-Rom;
+// unchecking Auto lets you dial the wall's leave-angle at this zone (degrees).
+function setAngleUI(kind, val){
+  const sl=document.getElementById('sl-'+kind), v=document.getElementById('v-'+kind), ck=document.getElementById('ck-'+kind+'-auto');
+  const isAuto = val==='auto'||val==null;
+  ck.checked = isAuto;
+  sl.disabled = isAuto;
+  sl.value = isAuto ? 0 : val;
+  v.textContent = isAuto ? 'Auto' : `${Math.round(val)}°`;
+}
+function wireAngle(kind, field){
+  const sl=document.getElementById('sl-'+kind), v=document.getElementById('v-'+kind), ck=document.getElementById('ck-'+kind+'-auto');
+  sl.addEventListener('input',()=>{ if(ck.checked) return; state[activeZone][field]=parseFloat(sl.value); v.textContent=`${Math.round(sl.value)}°`; schedRebuild(); markUnsaved(); });
+  ck.addEventListener('change',()=>{ const isAuto=ck.checked; state[activeZone][field]= isAuto?'auto':parseFloat(sl.value); sl.disabled=isAuto; v.textContent=isAuto?'Auto':`${Math.round(sl.value)}°`; schedRebuild(); markUnsaved(); });
+}
+wireAngle('rad','radIncl');
+wireAngle('tan','tanLead');
 
 // Profile sliders
 sl('sl-ripple','v-ripple',v=>{if(state[activeZone].profile.type==='wave')state[activeZone].profile.ripple=Math.round(v);},v=>`${Math.round(v)}`);
