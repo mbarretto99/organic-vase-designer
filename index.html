@@ -216,8 +216,8 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
           </div>
 
           <!-- Zone scale & twist (shown for active zone) -->
-          <div class="cr"><div class="cl"><span id="lbl-scale">Bottom Scale</span><span class="v" id="v-scale">10%</span></div><input type="range" id="sl-scale" min="-90" max="100" value="10" step="1"/></div>
-          <div class="cr"><div class="cl"><span id="lbl-twist">Bottom Twist</span><span class="v" id="v-twist">0°</span></div><input type="range" id="sl-twist" min="-360" max="360" value="0" step="5"/></div>
+          <div class="cr"><div class="cl"><span id="lbl-scale">Bottom Scale</span><span class="v" id="v-scale">0%</span></div><input type="range" id="sl-scale" min="-90" max="100" value="0" step="1"/></div>
+          <div class="cr"><div class="cl"><span id="lbl-twist">Bottom Twist</span><span class="v" id="v-twist">0°</span></div><input type="range" id="sl-twist" min="-180" max="180" value="0" step="5"/></div>
           <div class="cr">
             <div class="cl"><span>Radial Inclination</span><span class="v" id="v-rad">Auto</span></div>
             <input type="range" id="sl-rad" min="-45" max="45" value="0" step="1" disabled/>
@@ -235,14 +235,6 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
           <div style="font-size:10px;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px" id="profile-shape-lbl">Profile Shape</div>
           <div class="profile-grid" id="profile-grid"></div>
 
-          <!-- Middle zone modifier (shown only when mid tab active) -->
-          <div id="mid-modifier" style="display:none;flex-direction:column;gap:9px">
-            <div style="font-size:10px;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase">Mid Zone Shape Effect</div>
-            <div style="font-size:11px;color:var(--text-muted);line-height:1.5;background:#12141E;padding:8px;border-radius:4px;border:1px solid var(--border)">
-              Scale &gt;0% <span style="color:#62E9FB">widens</span> the mid beyond the Vase width.<br>
-              Scale &lt;0% <span style="color:#B464FF">narrows</span> it. 0% = Vase width (no change).
-            </div>
-          </div>
 
           <!-- Parametric profile controls (shown when "Custom" selected) -->
           <div id="custom-controls">
@@ -763,7 +755,7 @@ const SAMPLES = 480;
 
 function defaultZone(type) {
   return {
-    scale: type==='bot'?10:type==='mid'?20:-10, // % change from VAS width
+    scale: 0, // % change from Vase width
     twist: 0,
     twistAcc: 0,
     radIncl: 'auto',  // wall radial inclination: 'auto' (C1-smooth) or degrees from vertical
@@ -802,7 +794,7 @@ const state = {
     bot: { ripple:12, amp:6,  sharp:20, org:0, shape:'sine' },
   },
 };
-state.bot.scale=10; state.mid.scale=20; state.top.scale=-10;
+state.bot.scale=0; state.mid.scale=0; state.top.scale=0;
 state.top.profile.amp=14; state.mid.profile.amp=8; state.bot.profile.amp=2;
 
 const RES={draft:{V:160,A:360},standard:{V:320,A:480},fine:{V:600,A:720}};
@@ -1336,7 +1328,7 @@ document.querySelectorAll('#mode-group .vbtn').forEach(b=>{
 function applyModeDefaults(m){
   state.mode=m;
   state.bot=defaultZone('bot');state.mid=defaultZone('mid');state.top=defaultZone('top');
-  state.bot.scale=10;state.mid.scale=20;state.top.scale=-10;
+  state.bot.scale=0;state.mid.scale=0;state.top.scale=0;
   if(m==='organic'){
     const prof={type:'svg_stock',key:'p2'};
     const clone=()=>JSON.parse(JSON.stringify(prof));
@@ -1374,11 +1366,10 @@ document.querySelectorAll('.ztab').forEach(tab=>{
 
 function setMidMode(isMid){
   // Every zone now has its own profile (RPA: per-zone; Organic: shared), so the
-  // profile picker is always visible. The mid bulge/pinch note shows for mid only.
+  // profile picker is always visible.
   document.getElementById('profile-grid').style.display='grid';
   document.getElementById('btn-import-svg').style.display='block';
   const lbl=document.getElementById('profile-shape-lbl'); if(lbl) lbl.style.display='block';
-  document.getElementById('mid-modifier').style.display = isMid ? 'flex' : 'none';
 }
 
 function updateZoneUI(){
@@ -1854,7 +1845,7 @@ document.getElementById('btn-new').addEventListener('click',()=>{
     Object.assign(state,{mode:'rpa',height:200,vasWidth:150,wall:2.5,baseThick:3,midPos:0.5,blend:0,morphMatch:false,phase:0,bot:defaultZone('bot'),mid:defaultZone('mid'),top:defaultZone('top'),resolution:'standard',showFloor:true,showXS:false,seed:Math.floor(Math.random()*99999),
       topAdj:{tilt:0,curve:2,mode:'linear'},
       waves:{enabled:false,linked:true,activeTab:'top',top:{ripple:12,amp:6,sharp:20,org:0,shape:'sine'},bot:{ripple:12,amp:6,sharp:20,org:0,shape:'sine'}}});
-    state.bot.scale=10;state.mid.scale=20;state.top.scale=-10;
+    state.bot.scale=0;state.mid.scale=0;state.top.scale=0;
     undoStack.length=0;redoStack.length=0;updateUndoUI();
     buildProfileGrid();
     syncAllUI();schedRebuild();markUnsaved();
