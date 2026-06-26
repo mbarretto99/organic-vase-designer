@@ -945,10 +945,10 @@ function crossSectionAt(t, s, profilePtsCache) {
   const midRadius = halfV * (1 + s.mid.scale/100);
   // Radius as a Hermite spline through (rBot, midRadius, rTop); zone angles shape tangents.
   const [rm0,rm1a,rm2] = crT3(yMid,H, rBot,midRadius,rTop);
-  // Middle-zone tangent: Intensity = handle LENGTH (0% = sharp/barely-curved, high = broad/rounded).
-  // Angle biases the tangent direction (0° = vertical). Intensity scales the whole tangent magnitude.
+  // Middle-zone tangent: Angle sets the curvature direction (0° = vertical/no bias),
+  // Intensity scales how strong that bias is. The auto tangent (rm1a) is always kept as a base.
   const _mti=(s.midTanIntensity??5)/100;
-  const rm1=(rm1a+Math.tan((s.midTanAngle||0)*Math.PI/180)*0.1)*_mti;
+  const rm1=rm1a+Math.tan((s.midTanAngle||0)*Math.PI/180)*_mti*0.5;
   const radius = hermiteY3(y,yMid,H, rBot,midRadius,rTop,
     angleTan(s.bot.radIncl,rm0,'r',H), angleTan(s.mid.radIncl,rm1,'r',H), angleTan(s.top.radIncl,rm2,'r',H));
 
@@ -1216,7 +1216,7 @@ function drawAmpPreview(){
   const yMid=state.midPos;
   const [rm0,rm1a,rm2]=crT3(yMid,1, rBot,rMid,rTop);
   const _mti=(state.midTanIntensity??5)/100;
-  const rm1=(rm1a+Math.tan((state.midTanAngle||0)*Math.PI/180)*0.1)*_mti;
+  const rm1=rm1a+Math.tan((state.midTanAngle||0)*Math.PI/180)*_mti*0.5;
   const rMax=Math.max(rBot,rMid,rTop,0.1);
   for(let px=0;px<=W;px++){
     const t=px/W;
