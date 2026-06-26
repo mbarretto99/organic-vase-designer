@@ -217,7 +217,7 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
           </div>
 
           <!-- Zone scale & twist (shown for active zone) -->
-          <div class="cr"><div class="cl"><span id="lbl-scale">Bottom Scale</span><span class="v" id="v-scale">0%</span></div><input type="range" id="sl-scale" min="-90" max="100" value="0" step="1"/></div>
+          <div class="cr"><div class="cl"><span id="lbl-scale">Bottom Scale</span><span class="v" id="v-scale">0%</span></div><input type="range" id="sl-scale" min="-100" max="100" value="0" step="1"/></div>
           <div class="cr"><div class="cl"><span id="lbl-twist">Bottom Twist</span><span class="v" id="v-twist">0°</span></div><input type="range" id="sl-twist" min="-180" max="180" value="0" step="5"/></div>
           <div class="cr">
             <div class="cl"><span>Radial Inclination</span><span class="v" id="v-rad">Auto</span></div>
@@ -1389,7 +1389,7 @@ function updateZoneUI(){
   document.getElementById('lbl-twist').textContent=`${lbl} Twist`;
   // Scale = % change from VAS width: -90% (near-zero) … +100% (double)
   const scaleSlider=document.getElementById('sl-scale');
-  scaleSlider.min=-90; scaleSlider.max=100;
+  scaleSlider.min=-100; scaleSlider.max=100;
   document.getElementById('sl-scale').value=z.scale;
   document.getElementById('v-scale').textContent=`${z.scale}%`;
   document.getElementById('sl-twist').value=z.twist;
