@@ -159,11 +159,9 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
           <div class="cr"><div class="cl"><span>Vase Width</span><span class="v" id="v-vaswidth">150 mm</span></div><input type="range" id="sl-vaswidth" min="50" max="500" value="150" step="1"/></div>
           <div id="wall-controls">
             <div class="cr"><div class="cl"><span>Wall Thickness</span><span class="v" id="v-wall">2.5 mm</span></div><input type="range" id="sl-wall" min="1" max="6" value="2.5" step="0.1"/></div>
-            <div style="font-size:10px;color:var(--text-muted);margin-top:-4px">🖨 Recommended (FDM): <span style="color:var(--accent-bright)">1.2–2.4 mm</span></div>
             <div id="wall-warn" style="font-size:10px;color:#FF8C42;display:none;margin-top:-4px">⚠ Too thick for this form's thinnest point (max <span id="wall-warn-max"></span> mm)</div>
           </div>
           <div class="cr"><div class="cl"><span>Base Thickness</span><span class="v" id="v-basethick">3.0 mm</span></div><input type="range" id="sl-basethick" min="1" max="5" value="3" step="0.5"/></div>
-          <button class="hbtn" id="btn-golden" style="width:100%;justify-content:center;font-size:11px">✦ Golden Proportions</button>
         </div>
       </div>
 
@@ -180,19 +178,6 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
           <div id="tilt-curve-controls" style="display:none">
             <div class="cr"><div class="cl"><span>Curve Power</span><span class="v" id="v-curvepow">2.0</span></div><input type="range" id="sl-curvepow" min="1.1" max="6" value="2" step="0.1"/></div>
           </div>
-        </div>
-      </div>
-
-      <!-- ZONE LAYOUT -->
-      <div class="sec">
-        <div class="sec-hd" data-s="layout">Zone Layout <span class="chev">▾</span></div>
-        <div class="sec-bd" id="bd-layout">
-          <div class="cr"><div class="cl"><span>Middle Zone Position</span><span class="v" id="v-midpos">50%</span></div><input type="range" id="sl-midpos" min="10" max="90" value="50" step="1"/></div>
-          <div class="cr"><div class="cl"><span>Tangent Angle</span><span class="v" id="v-mtan">0°</span></div><input type="range" id="sl-mtan" min="-60" max="60" value="0" step="1"/></div>
-          <div class="cr"><div class="cl"><span>Tangent Intensity</span><span class="v" id="v-mtin">5%</span></div><input type="range" id="sl-mtin" min="0" max="200" value="5" step="1"/></div>
-          <label class="ck"><input type="checkbox" id="ck-morph-match"/> Match-point morphing (vs linear resample)</label>
-          <!-- Amplitude curve preview -->
-          <canvas id="amp-preview" width="300" height="50" style="width:100%;border-radius:4px;border:1px solid var(--border);background:#12141E"></canvas>
         </div>
       </div>
 
@@ -216,17 +201,22 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
           </div>
 
           <!-- Zone scale & twist (shown for active zone) -->
+          <div class="cr" id="midpos-row" style="display:none"><div class="cl"><span>Middle Profile Position</span><span class="v" id="v-midpos">50%</span></div><input type="range" id="sl-midpos" min="10" max="90" value="50" step="1"/></div>
           <div class="cr"><div class="cl"><span id="lbl-scale">Bottom Scale</span><span class="v" id="v-scale">0%</span></div><input type="range" id="sl-scale" min="-100" max="100" value="0" step="1"/></div>
           <div class="cr"><div class="cl"><span id="lbl-twist">Bottom Twist</span><span class="v" id="v-twist">0°</span></div><input type="range" id="sl-twist" min="-180" max="180" value="0" step="5"/></div>
           <div class="cr">
             <div class="cl"><span>Radial Inclination</span><span class="v" id="v-rad">Auto</span></div>
             <input type="range" id="sl-rad" min="-45" max="45" value="0" step="1" disabled/>
             <label class="ck" style="margin-top:2px"><input type="checkbox" id="ck-rad-auto" checked/> Auto (smooth)</label>
+            <div class="cl" style="margin-top:4px"><span>Intensity</span><span class="v" id="v-radint">100%</span></div>
+            <input type="range" id="sl-radint" min="0" max="200" value="100" step="1"/>
           </div>
           <div class="cr">
             <div class="cl"><span>Tangential Lead</span><span class="v" id="v-tan">Auto</span></div>
             <input type="range" id="sl-tan" min="-45" max="45" value="0" step="1" disabled/>
             <label class="ck" style="margin-top:2px"><input type="checkbox" id="ck-tan-auto" checked/> Auto (smooth)</label>
+            <div class="cl" style="margin-top:4px"><span>Intensity</span><span class="v" id="v-tanint">100%</span></div>
+            <input type="range" id="sl-tanint" min="0" max="200" value="100" step="1"/>
           </div>
 
           <div style="height:1px;background:var(--border);margin:2px 0"></div>
@@ -256,7 +246,6 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
             <div class="cr"><div class="cl"><span>Height Ratio</span><span class="v" id="v-eh">100%</span></div><input type="range" id="sl-eh" min="20" max="200" value="100" step="1"/></div>
           </div>
 
-          <button class="ibtn" id="btn-import-svg">⊕ Import SVG profile…</button>
           <input type="file" id="svg-file-input" accept=".svg" style="display:none"/>
         </div>
       </div>
@@ -791,7 +780,9 @@ function defaultZone(type) {
     twist: 0,
     twistAcc: 0,
     radIncl: 'auto',  // wall radial inclination: 'auto' (C1-smooth) or degrees from vertical
+    radInclInt: 100,  // radial handle length (%): how hard the curve sweeps through this anchor
     tanLead: 'auto',  // wall tangential (twist) lead: 'auto' (C1-smooth) or degrees
+    tanLeadInt: 100,  // tangential handle length (%)
     profile: { type:'wave', ripple:12, amp:10, sharp:20, org:0, seed:Math.floor(Math.random()*9999) }
   };
 }
@@ -804,9 +795,6 @@ const state = {
   baseThick: 3.0,
   midPos: 0.5,
   blend: 0,
-  midTanAngle: 0,     // middle-zone radius tangent angle (°; 0 = vertical)
-  midTanIntensity: 5, // middle-zone radius tangent intensity (%; 0 ≈ auto, 100 = strong)
-  morphMatch: false,
   phase: 0,
   bot: defaultZone('bot'),
   mid: defaultZone('mid'),
@@ -951,7 +939,10 @@ function zoneWeightsAt(t,s){
 // Get interpolated cross-section points at height t
 function crossSectionAt(t, s, profilePtsCache) {
   const {wBot,wMid,wTop}=zoneWeightsAt(t,s);
-  const method=s.morphMatch?'match':'linear';
+  // Intensity (%): scales a zone's Hermite handle length — 0 = sharp corner at
+  // the anchor, 100 = standard sweep, 200 = extra-hard sweep. Applies to Auto
+  // tangents too.
+  const _int=v=>(v==null?1:v/100);
 
   // uf: C1 parameter across base→top (= the Bernstein parameter; 0=bot, 0.5=mid, 1=top)
   const uf = wMid*0.5 + wTop;
@@ -961,13 +952,15 @@ function crossSectionAt(t, s, profilePtsCache) {
   // Twist through (base=0, mid=midTwist, top=topTwist) + phase; starts at the base.
   const [tm0,tm1,tm2] = crT3(yMid,H, 0, s.mid.twist, s.top.twist);
   const twist = s.phase + hermiteY3(y,yMid,H, 0, s.mid.twist, s.top.twist,
-    angleTan(s.bot.tanLead,tm0,'t',H), angleTan(s.mid.tanLead,tm1,'t',H), angleTan(s.top.tanLead,tm2,'t',H));
+    angleTan(s.bot.tanLead,tm0,'t',H)*_int(s.bot.tanLeadInt),
+    angleTan(s.mid.tanLead,tm1,'t',H)*_int(s.mid.tanLeadInt),
+    angleTan(s.top.tanLead,tm2,'t',H)*_int(s.top.tanLeadInt));
 
   // PROFILE MORPH: C1 Catmull-Rom through bot→mid→top (per point). No kink at the mid
   // zone — the old staged bot→mid / mid→top blend had a derivative jump there.
   // Organic profiles are aligned (CCW, start near angle 0) so this works there too.
   const pBot=profilePtsCache.bot, pMid=profilePtsCache.mid, pTop=profilePtsCache.top;
-  const morphed = morphProfiles3(pBot, pMid, pTop, uf, method);
+  const morphed = morphProfiles3(pBot, pMid, pTop, uf, 'linear');
 
   // SCALE: each zone's width = vasWidth × (1 + scale%/100); 0% = VAS width.
   const halfV = s.vasWidth/2;
@@ -975,13 +968,11 @@ function crossSectionAt(t, s, profilePtsCache) {
   const rTop = halfV * (1 + s.top.scale/100);
   const midRadius = halfV * (1 + s.mid.scale/100);
   // Radius as a Hermite spline through (rBot, midRadius, rTop); zone angles shape tangents.
-  const [rm0,rm1a,rm2] = crT3(yMid,H, rBot,midRadius,rTop);
-  // Middle-zone tangent: Angle sets the curvature direction (0° = vertical/no bias),
-  // Intensity scales how strong that bias is. The auto tangent (rm1a) is always kept as a base.
-  const _mti=(s.midTanIntensity??5)/100;
-  const rm1=rm1a+Math.tan((s.midTanAngle||0)*Math.PI/180)*_mti*0.5;
+  const [rm0,rm1,rm2] = crT3(yMid,H, rBot,midRadius,rTop);
   const radius = hermiteY3(y,yMid,H, rBot,midRadius,rTop,
-    angleTan(s.bot.radIncl,rm0,'r',H), angleTan(s.mid.radIncl,rm1,'r',H), angleTan(s.top.radIncl,rm2,'r',H));
+    angleTan(s.bot.radIncl,rm0,'r',H)*_int(s.bot.radInclInt),
+    angleTan(s.mid.radIncl,rm1,'r',H)*_int(s.mid.radInclInt),
+    angleTan(s.top.radIncl,rm2,'r',H)*_int(s.top.radInclInt));
 
   // Apply radius scaling and twist rotation
   const twistRad=(twist*Math.PI/180);
@@ -1256,47 +1247,9 @@ function rebuildMesh(){
   const v=geo.attributes.position.count,f=(geo.index?.count||0)/3;
   document.getElementById('st-verts').textContent=v.toLocaleString();
   document.getElementById('st-faces').textContent=f.toLocaleString();
-  drawAmpPreview();updateWallGuidance();
+  updateWallGuidance();
 }
 function schedRebuild(){if(regenTimer)clearTimeout(regenTimer);regenTimer=setTimeout(rebuildMesh,80);}
-
-// ═══════════════════════════════════════════════════════════════════
-// AMP/ZONE PREVIEW
-// ═══════════════════════════════════════════════════════════════════
-function drawAmpPreview(){
-  const cvs=document.getElementById('amp-preview');
-  const ctx=cvs.getContext('2d');
-  const W=cvs.width,H2=cvs.height;
-  ctx.clearRect(0,0,W,H2);
-  ctx.fillStyle='#12141E';ctx.fillRect(0,0,W,H2);
-  const grad=ctx.createLinearGradient(0,0,W,0);
-  grad.addColorStop(0,'#1E90FF');
-  grad.addColorStop(state.midPos,'#62E9FB');
-  grad.addColorStop(1,'#B464FF');
-  ctx.beginPath();
-  const rBot=(1+state.bot.scale/100);
-  const rMid=(1+state.mid.scale/100);
-  const rTop=(1+state.top.scale/100);
-  const yMid=state.midPos;
-  const [rm0,rm1a,rm2]=crT3(yMid,1, rBot,rMid,rTop);
-  const _mti=(state.midTanIntensity??5)/100;
-  const rm1=rm1a+Math.tan((state.midTanAngle||0)*Math.PI/180)*_mti*0.5;
-  const rMax=Math.max(rBot,rMid,rTop,0.1);
-  for(let px=0;px<=W;px++){
-    const t=px/W;
-    const r=hermiteY3(t,yMid,1, rBot,rMid,rTop,
-      angleTan(state.bot.radIncl,rm0,'r',1), angleTan(state.mid.radIncl,rm1,'r',1), angleTan(state.top.radIncl,rm2,'r',1));
-    const py=H2-(r/rMax)*H2*0.9-H2*0.05;
-    if(px===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
-  }
-  ctx.strokeStyle=grad;ctx.lineWidth=2;ctx.stroke();
-  // Zone markers
-  [{t:0,l:'BOT',c:'#1E90FF'},{t:state.midPos,l:'MID',c:'#62E9FB'},{t:1,l:'TOP',c:'#B464FF'}].forEach(m=>{
-    const px=m.t*W;
-    ctx.beginPath();ctx.arc(px,H2/2,3,0,Math.PI*2);ctx.fillStyle=m.c;ctx.fill();
-    ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='8px sans-serif';ctx.fillText(m.l,px+4,H2/2-3);
-  });
-}
 
 // ═══════════════════════════════════════════════════════════════════
 // PROFILE THUMBNAILS
@@ -1435,9 +1388,9 @@ document.querySelectorAll('.ztab').forEach(tab=>{
 
 function setMidMode(isMid){
   // Every zone has its own profile in both modes, so the profile picker is
-  // always visible.
+  // always visible. The profile-position slider only applies to the middle zone.
   document.getElementById('profile-grid').style.display='grid';
-  document.getElementById('btn-import-svg').style.display='block';
+  document.getElementById('midpos-row').style.display=isMid?'':'none';
   const lbl=document.getElementById('profile-shape-lbl'); if(lbl) lbl.style.display='block';
 }
 
@@ -1457,6 +1410,10 @@ function updateZoneUI(){
   // Wall-angle controls (Radial Inclination + Tangential Lead): 'auto' or degrees
   setAngleUI('rad', z.radIncl);
   setAngleUI('tan', z.tanLead);
+  document.getElementById('sl-radint').value=z.radInclInt??100;
+  document.getElementById('v-radint').textContent=`${Math.round(z.radInclInt??100)}%`;
+  document.getElementById('sl-tanint').value=z.tanLeadInt??100;
+  document.getElementById('v-tanint').textContent=`${Math.round(z.tanLeadInt??100)}%`;
   const isMid=(activeZone==='mid');
   setMidMode(isMid);
   updateProfileUI();
@@ -1510,8 +1467,6 @@ sl('sl-basethick','v-basethick',v=>state.baseThick=v,    v=>`${v.toFixed(1)} mm`
 
 // Layout
 sl('sl-midpos','v-midpos',v=>state.midPos=v/100,v=>`${Math.round(v)}%`);
-sl('sl-mtan','v-mtan', v=>state.midTanAngle=v,     v=>`${Math.round(v)}°`);
-sl('sl-mtin','v-mtin', v=>state.midTanIntensity=v,  v=>`${Math.round(v)}%`);
 sl('sl-phase', 'v-phase', v=>state.phase=v,    v=>`${Math.round(v)}°`);
 
 // Top adjustment
@@ -1632,6 +1587,9 @@ wsl('sl-w-org','v-w-org', v=>{
 // Zone sliders (write to activeZone)
 sl('sl-scale','v-scale',v=>state[activeZone].scale=v,       v=>`${Math.round(v)}%`);
 sl('sl-twist','v-twist',v=>state[activeZone].twist=v,       v=>`${Math.round(v)}°`);
+// Handle-length (intensity) sliders — scale the zone's Hermite tangents
+sl('sl-radint','v-radint',v=>state[activeZone].radInclInt=v, v=>`${Math.round(v)}%`);
+sl('sl-tanint','v-tanint',v=>state[activeZone].tanLeadInt=v, v=>`${Math.round(v)}%`);
 
 // Wall-angle controls: Radial Inclination + Tangential Lead. 'Auto' = C1-smooth Catmull-Rom;
 // unchecking Auto lets you dial the wall's leave-angle at this zone (degrees).
@@ -1661,12 +1619,10 @@ sl('sl-round', 'v-round', v=>{if(state[activeZone].profile.type==='polygon')stat
 sl('sl-ew',    'v-ew',    v=>{if(state[activeZone].profile.type==='ellipse')state[activeZone].profile.ew=v;},         v=>`${Math.round(v)}%`);
 sl('sl-eh',    'v-eh',    v=>{if(state[activeZone].profile.type==='ellipse')state[activeZone].profile.eh=v;},         v=>`${Math.round(v)}%`);
 
-document.getElementById('ck-morph-match').addEventListener('change',e=>{state.morphMatch=e.target.checked;schedRebuild();});
 
 // ═══════════════════════════════════════════════════════════════════
 // SVG IMPORT
 // ═══════════════════════════════════════════════════════════════════
-document.getElementById('btn-import-svg').addEventListener('click',()=>document.getElementById('svg-file-input').click());
 document.getElementById('svg-file-input').addEventListener('change',e=>{
   const file=e.target.files[0];if(!file)return;
   const reader=new FileReader();
@@ -1745,15 +1701,6 @@ document.getElementById('panel-toggle').addEventListener('click',()=>{
   setTimeout(onResize,300);
 });
 
-// Golden proportions — base dia = H×0.382, top dia = H×0.618 (φ ratio)
-document.getElementById('btn-golden').addEventListener('click',()=>{
-  const H=state.height;
-  state.vasWidth=Math.max(50,Math.min(500,Math.round(H*0.382))); // base = VAS width
-  state.bot.scale=0;                                              // base = VAS width
-  state.top.scale=Math.round((0.618/0.382-1)*100);               // top ≈ +62% wider
-  state.mid.scale=Math.round(state.top.scale/2);                 // belly halfway
-  syncAllUI();schedRebuild();markUnsaved();
-});
 
 // Randomise
 document.getElementById('btn-rand').addEventListener('click',()=>{
@@ -1793,10 +1740,7 @@ function syncAllUI(){
   document.getElementById('sl-wall').value=state.wall;document.getElementById('v-wall').textContent=`${state.wall.toFixed(1)} mm`;updateWallGuidance();
   document.getElementById('sl-basethick').value=state.baseThick;document.getElementById('v-basethick').textContent=`${state.baseThick.toFixed(1)} mm`;
   document.getElementById('sl-midpos').value=state.midPos*100;document.getElementById('v-midpos').textContent=`${Math.round(state.midPos*100)}%`;
-  document.getElementById('sl-mtan').value=state.midTanAngle;document.getElementById('v-mtan').textContent=`${Math.round(state.midTanAngle)}°`;
-  document.getElementById('sl-mtin').value=state.midTanIntensity;document.getElementById('v-mtin').textContent=`${Math.round(state.midTanIntensity)}%`;
   document.getElementById('sl-phase').value=state.phase;document.getElementById('v-phase').textContent=`${Math.round(state.phase)}°`;
-  document.getElementById('ck-morph-match').checked=state.morphMatch;
   // Top adjustment panel
   if(state.topAdj){
     document.getElementById('sl-tilt').value=state.topAdj.tilt||0;
@@ -1897,8 +1841,11 @@ document.getElementById('btn-open').addEventListener('click',()=>{
   // Ensure mode exists (files saved before modes were added default to RPA)
   if(!loaded.mode) loaded.mode='rpa';
   if(!loaded.vasWidth) loaded.vasWidth=150;
-  if(loaded.midTanAngle===undefined) loaded.midTanAngle=0;
-  if(loaded.midTanIntensity===undefined) loaded.midTanIntensity=5;
+  // Older saves have no handle-length intensities — default them to 100%
+  ['bot','mid','top'].forEach(z=>{
+    if(loaded[z].radInclInt==null) loaded[z].radInclInt=100;
+    if(loaded[z].tanLeadInt==null) loaded[z].tanLeadInt=100;
+  });
   // Replace state in-place
   Object.keys(state).forEach(k=>delete state[k]);
   Object.assign(state,loaded);
@@ -1916,7 +1863,7 @@ document.getElementById('btn-open').addEventListener('click',()=>{
 });
 document.getElementById('btn-new').addEventListener('click',()=>{
   if(confirm('Start new? Unsaved changes will be lost.')){
-    Object.assign(state,{mode:'rpa',height:200,vasWidth:150,wall:2.5,baseThick:3,midPos:0.5,blend:0,midTanAngle:0,midTanIntensity:5,morphMatch:false,phase:0,bot:defaultZone('bot'),mid:defaultZone('mid'),top:defaultZone('top'),resolution:'standard',showFloor:true,showXS:false,seed:Math.floor(Math.random()*99999),
+    Object.assign(state,{mode:'rpa',height:200,vasWidth:150,wall:2.5,baseThick:3,midPos:0.5,blend:0,phase:0,bot:defaultZone('bot'),mid:defaultZone('mid'),top:defaultZone('top'),resolution:'standard',showFloor:true,showXS:false,seed:Math.floor(Math.random()*99999),
       topAdj:{tilt:0,curve:2,mode:'linear'},
       waves:{enabled:false,linked:true,activeTab:'top',top:{ripple:12,amp:6,sharp:20,org:0,shape:'sine'},bot:{ripple:12,amp:6,sharp:20,org:0,shape:'sine'}}});
     state.bot.scale=0;state.mid.scale=0;state.top.scale=0;
