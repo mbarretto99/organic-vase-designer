@@ -7,11 +7,11 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0F1117;--panel-bg:#1A1D27;--border:#2A2D3A;
-  --accent:#1E90FF;--accent-bright:#62E9FB;
-  --text:#E0E4F0;--text-muted:#7A7F9A;
+  --bg:#F1EADD;--panel-bg:#EFE6D2;--border:#C3A87B;
+  --accent:#6E7548;--accent-bright:#C79A45;
+  --text:#23282A;--text-muted:#A39E92;
   --header-h:52px;--status-h:34px;
-  --zone-bot:#1E90FF;--zone-mid:#62E9FB;--zone-top:#B464FF;
+  --zone-bot:#6E7548;--zone-mid:#C79A45;--zone-top:#8C6F4E;
 }
 body{background:var(--bg);color:var(--text);font-family:'Inter','Segoe UI',system-ui,sans-serif;font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
 
@@ -24,10 +24,10 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Segoe UI',syste
 #design-name:hover{border-color:var(--border)}
 #design-name:focus{border-color:var(--accent);color:var(--text)}
 .save-status{font-size:11px;color:var(--text-muted)}
-.hbtn{background:var(--border);border:1px solid #3A3D4A;border-radius:5px;color:var(--text);cursor:pointer;font-size:12px;padding:5px 11px;display:flex;align-items:center;gap:5px;transition:background .15s,border-color .15s;white-space:nowrap}
-.hbtn:hover{background:#2A2D3A;border-color:var(--accent)}
+.hbtn{background:var(--border);border:1px solid #C3A87B;border-radius:5px;color:var(--text);cursor:pointer;font-size:12px;padding:5px 11px;display:flex;align-items:center;gap:5px;transition:background .15s,border-color .15s;white-space:nowrap}
+.hbtn:hover{background:#E3D7B8;border-color:var(--accent)}
 .hbtn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
-.hbtn.primary:hover{background:#3BA0FF}
+.hbtn.primary:hover{background:#B8893D}
 
 /* WORKSPACE */
 #workspace{flex:1;display:flex;overflow:hidden}
@@ -37,9 +37,9 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Segoe UI',syste
 /* VP overlays */
 #vp-tl{position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:6px;z-index:10}
 #vp-tr{position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:6px;z-index:10;align-items:flex-end}
-.vbtn{background:rgba(26,29,39,.9);border:1px solid var(--border);border-radius:5px;color:var(--text-muted);cursor:pointer;font-size:11px;padding:5px 9px;backdrop-filter:blur(4px);transition:color .15s,border-color .15s;white-space:nowrap}
+.vbtn{background:rgba(239,230,210,.9);border:1px solid var(--border);border-radius:5px;color:var(--text-muted);cursor:pointer;font-size:11px;padding:5px 9px;backdrop-filter:blur(4px);transition:color .15s,border-color .15s;white-space:nowrap}
 .vbtn:hover,.vbtn.on{color:var(--accent-bright);border-color:var(--accent)}
-.vgroup{display:flex;gap:3px;background:rgba(26,29,39,.9);border:1px solid var(--border);border-radius:5px;padding:3px;backdrop-filter:blur(4px)}
+.vgroup{display:flex;gap:3px;background:rgba(239,230,210,.9);border:1px solid var(--border);border-radius:5px;padding:3px;backdrop-filter:blur(4px)}
 .vgroup .vbtn{background:transparent;border:none;border-radius:3px;padding:4px 8px}
 .vgroup .vbtn.on{background:var(--accent);color:#fff}
 
@@ -53,7 +53,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Segoe UI',syste
 
 /* SECTIONS */
 .sec{margin-bottom:8px;border:1px solid var(--border);border-radius:6px;overflow:hidden}
-.sec-hd{background:#1E2130;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);transition:color .15s}
+.sec-hd{background:#D8C9A8;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);transition:color .15s}
 .sec-hd:hover{color:var(--text)}
 .sec-hd .chev{transition:transform .2s;font-size:10px}
 .sec-hd.shut .chev{transform:rotate(-90deg)}
@@ -62,15 +62,15 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Segoe UI',syste
 
 /* ZONE TAB BAR */
 .zone-tabs{display:flex;gap:4px;margin-bottom:10px}
-.ztab{flex:1;padding:7px 4px;border-radius:5px;border:1px solid var(--border);background:#12141E;cursor:pointer;font-size:11px;font-weight:600;text-align:center;transition:all .15s;color:var(--text-muted)}
-.ztab.bot.on{border-color:var(--zone-bot);color:var(--zone-bot);background:rgba(30,144,255,.12)}
-.ztab.mid.on{border-color:var(--zone-mid);color:var(--zone-mid);background:rgba(98,233,251,.1)}
-.ztab.top.on{border-color:var(--zone-top);color:var(--zone-top);background:rgba(180,100,255,.12)}
+.ztab{flex:1;padding:7px 4px;border-radius:5px;border:1px solid var(--border);background:#E5D9BC;cursor:pointer;font-size:11px;font-weight:600;text-align:center;transition:all .15s;color:var(--text-muted)}
+.ztab.bot.on{border-color:var(--zone-bot);color:var(--zone-bot);background:rgba(110,117,72,.14)}
+.ztab.mid.on{border-color:var(--zone-mid);color:var(--zone-mid);background:rgba(199,154,69,.16)}
+.ztab.top.on{border-color:var(--zone-top);color:var(--zone-top);background:rgba(140,111,78,.16)}
 .ztab:hover{border-color:var(--accent)}
 
 /* PROFILE PICKER */
 .profile-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
-.pcard{border:1px solid var(--border);border-radius:5px;background:#12141E;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;gap:4px;transition:border-color .15s}
+.pcard{border:1px solid var(--border);border-radius:5px;background:#E5D9BC;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;gap:4px;transition:border-color .15s}
 .pcard:hover{border-color:var(--accent)}
 .pcard.on{border-color:var(--accent-bright)}
 .pcard canvas{width:56px;height:56px;border-radius:3px}
@@ -82,14 +82,14 @@ body{background:var(--bg);color:var(--text);font-family:'Inter','Segoe UI',syste
 .cl{display:flex;justify-content:space-between;align-items:center;color:var(--text-muted);font-size:11px}
 .cl .v{color:var(--accent-bright);font-variant-numeric:tabular-nums;font-size:11px}
 input[type=range]{-webkit-appearance:none;width:100%;height:3px;background:var(--border);border-radius:2px;outline:none;cursor:pointer}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;background:var(--accent);border-radius:50%;cursor:pointer;border:2px solid var(--panel-bg);box-shadow:0 0 4px rgba(30,144,255,.5)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;background:var(--accent);border-radius:50%;cursor:pointer;border:2px solid var(--panel-bg);box-shadow:0 0 4px rgba(110,117,72,.5)}
 input[type=range]::-webkit-slider-thumb:hover{background:var(--accent-bright)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 label.ck{display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;cursor:pointer}
 label.ck input{accent-color:var(--accent);width:13px;height:13px}
 
 /* IMPORT BTN */
-.ibtn{background:#12141E;border:1px dashed var(--border);border-radius:5px;color:var(--text-muted);cursor:pointer;font-size:11px;padding:8px;width:100%;text-align:center;transition:border-color .15s}
+.ibtn{background:#E5D9BC;border:1px dashed var(--border);border-radius:5px;color:var(--text-muted);cursor:pointer;font-size:11px;padding:8px;width:100%;text-align:center;transition:border-color .15s}
 .ibtn:hover{border-color:var(--accent);color:var(--accent-bright)}
 
 /* STATUS */
@@ -159,7 +159,7 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
           <div class="cr"><div class="cl"><span>Vase Width</span><span class="v" id="v-vaswidth">150 mm</span></div><input type="range" id="sl-vaswidth" min="50" max="500" value="150" step="1"/></div>
           <div id="wall-controls">
             <div class="cr"><div class="cl"><span>Wall Thickness</span><span class="v" id="v-wall">2.5 mm</span></div><input type="range" id="sl-wall" min="1" max="6" value="2.5" step="0.1"/></div>
-            <div id="wall-warn" style="font-size:10px;color:#FF8C42;display:none;margin-top:-4px">⚠ Too thick for this form's thinnest point (max <span id="wall-warn-max"></span> mm)</div>
+            <div id="wall-warn" style="font-size:10px;color:#8C6F4E;display:none;margin-top:-4px">⚠ Too thick for this form's thinnest point (max <span id="wall-warn-max"></span> mm)</div>
           </div>
           <div class="cr"><div class="cl"><span>Base Thickness</span><span class="v" id="v-basethick">3.0 mm</span></div><input type="range" id="sl-basethick" min="1" max="5" value="3" step="0.5"/></div>
         </div>
@@ -206,7 +206,7 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
           <div class="cr"><div class="cl"><span id="lbl-twist">Bottom Twist</span><span class="v" id="v-twist">0°</span></div><input type="range" id="sl-twist" min="-180" max="180" value="0" step="5"/></div>
           <div class="cr">
             <div class="cl"><span>Radial Inclination</span><span class="v" id="v-rad">Auto</span></div>
-            <input type="range" id="sl-rad" min="-45" max="45" value="0" step="1" disabled/>
+            <input type="range" id="sl-rad" min="-60" max="60" value="0" step="1" disabled/>
             <label class="ck" style="margin-top:2px"><input type="checkbox" id="ck-rad-auto" checked/> Auto (smooth)</label>
             <div class="cl" style="margin-top:4px"><span>Intensity</span><span class="v" id="v-radint">100%</span></div>
             <input type="range" id="sl-radint" min="0" max="200" value="100" step="1"/>
@@ -308,7 +308,7 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
     <span class="val" id="st-redo">0</span>
   </div>
   <div class="hsp"></div>
-  <div class="si" id="st-warn" style="color:#FF8C42;display:none">⚠ <span id="st-warn-txt"></span></div>
+  <div class="si" id="st-warn" style="color:#8C6F4E;display:none">⚠ <span id="st-warn-txt"></span></div>
 </div>
 
 <!-- EXPORT MODAL -->
@@ -333,7 +333,7 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
     </div>
     <div class="cr">
       <div class="cl"><span>Filename</span></div>
-      <input type="text" id="exp-name" style="background:#12141E;border:1px solid var(--border);border-radius:5px;color:var(--text);padding:6px 8px;font-size:12px;font-family:inherit;outline:none"/>
+      <input type="text" id="exp-name" style="background:#E5D9BC;border:1px solid var(--border);border-radius:5px;color:var(--text);padding:6px 8px;font-size:12px;font-family:inherit;outline:none"/>
     </div>
     <div style="font-size:10px;color:var(--text-muted);line-height:1.4">Exports in millimetres (slicer-standard). Higher resolution = smoother mesh &amp; larger file.</div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:2px">
@@ -842,7 +842,7 @@ renderer.toneMappingExposure=1.0;
 renderer.localClippingEnabled=true;
 
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x0F1117);
+scene.background=new THREE.Color(0xF1EADD);
 
 const camera=new THREE.PerspectiveCamera(45,1,0.1,5000);
 const DEF_CAM=new THREE.Vector3(0,120,380);
@@ -857,10 +857,10 @@ orb.update();
 scene.add(new THREE.AmbientLight(0xffffff,0.4));
 const dL1=new THREE.DirectionalLight(0xffffff,0.8);
 dL1.position.set(-200,300,200); dL1.castShadow=true; scene.add(dL1);
-const dL2=new THREE.DirectionalLight(0x4488ff,0.3);
+const dL2=new THREE.DirectionalLight(0xC79A45,0.3);
 dL2.position.set(200,-100,-200); scene.add(dL2);
 
-const grid=new THREE.GridHelper(600,30,0x1E90FF,0x1E2130);
+const grid=new THREE.GridHelper(600,30,0x6E7548,0xC3A87B);
 grid.material.opacity=0.4; grid.material.transparent=true; scene.add(grid);
 const shadowPlane=new THREE.Mesh(new THREE.PlaneGeometry(600,600),new THREE.ShadowMaterial({opacity:0.25}));
 shadowPlane.rotation.x=-Math.PI/2; shadowPlane.receiveShadow=true; scene.add(shadowPlane);
@@ -1258,7 +1258,7 @@ function drawProfileThumb(canvas2d, pts) {
   const ctx=canvas2d.getContext('2d');
   const W=canvas2d.width,H=canvas2d.height;
   ctx.clearRect(0,0,W,H);
-  ctx.fillStyle='#0F1117';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#F1EADD';ctx.fillRect(0,0,W,H);
   if(!pts||pts.length<3)return;
   // Find extents
   let mnx=Infinity,mxx=-Infinity,mnz=Infinity,mxz=-Infinity;
@@ -1271,8 +1271,8 @@ function drawProfileThumb(canvas2d, pts) {
     if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
   });
   ctx.closePath();
-  ctx.fillStyle='rgba(30,144,255,0.25)';ctx.fill();
-  ctx.strokeStyle='#62E9FB';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.fillStyle='rgba(110,117,72,0.25)';ctx.fill();
+  ctx.strokeStyle='#C79A45';ctx.lineWidth=1.5;ctx.stroke();
 }
 
 // Build profile picker cards
@@ -1770,7 +1770,7 @@ function updateWallGuidance(){
   const lo=(WALL_REC_MIN-1)/(6-1)*100, hi=(WALL_REC_MAX-1)/(6-1)*100;
   const slEl=document.getElementById('sl-wall');
   if(slEl) slEl.style.background=
-    `linear-gradient(90deg,var(--border) 0%,var(--border) ${lo}%,rgba(98,233,251,.32) ${lo}%,rgba(98,233,251,.32) ${hi}%,var(--border) ${hi}%)`;
+    `linear-gradient(90deg,var(--border) 0%,var(--border) ${lo}%,rgba(199,154,69,.32) ${lo}%,rgba(199,154,69,.32) ${hi}%,var(--border) ${hi}%)`;
   const w=document.getElementById('wall-warn');
   if(!w) return;
   if(isFinite(lastMinOuterR)){
@@ -1800,8 +1800,8 @@ document.addEventListener('keydown',e=>{
 });
 
 // Save/Load
-function markUnsaved(){document.getElementById('save-status').textContent='Unsaved';document.getElementById('save-status').style.color='#FF8C42';}
-function markSaved(){document.getElementById('save-status').textContent='Saved';document.getElementById('save-status').style.color='#62E9FB';}
+function markUnsaved(){document.getElementById('save-status').textContent='Unsaved';document.getElementById('save-status').style.color='#8C6F4E';}
+function markSaved(){document.getElementById('save-status').textContent='Saved';document.getElementById('save-status').style.color='#C79A45';}
 // Robust download: anchor MUST be in the DOM before .click() or Firefox/Safari
 // silently drop it (this was the Save bug). Reused by Export.
 function downloadBlob(blob,filename){
