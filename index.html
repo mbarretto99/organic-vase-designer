@@ -320,7 +320,6 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
       <div class="vgroup" style="padding:3px">
         <button class="vbtn on" data-expfmt="stl-bin" style="flex:1">STL Binary</button>
         <button class="vbtn" data-expfmt="stl-ascii" style="flex:1">STL ASCII</button>
-        <button class="vbtn" data-expfmt="3mf" style="flex:1">3MF</button>
       </div>
     </div>
     <div class="cr">
@@ -348,7 +347,6 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
-import { zipSync, strToU8 } from 'fflate';
 
 // ═══════════════════════════════════════════════════════════════════
 // SVG PROFILE DATA — embedded from uploaded files
@@ -1873,7 +1871,7 @@ document.getElementById('btn-new').addEventListener('click',()=>{
   }
 });
 // ═══════════════════════════════════════════════════════════════════
-// EXPORT — STL (Binary/ASCII) + 3MF
+// EXPORT — STL (Binary/ASCII)
 // ═══════════════════════════════════════════════════════════════════
 const stlExporter=new STLExporter();
 let expFmt='stl-bin', expRes='medium';
@@ -1896,51 +1894,14 @@ function openExportModal(){
   expModal.style.display='flex';
 }
 
-// Build a minimal valid 3MF (ZIP) from a BufferGeometry — indexed, millimetres
-function export3MF(geo){
-  const pos=geo.attributes.position, idx=geo.index;
-  const va=[], ta=[];
-  for(let i=0;i<pos.count;i++){
-    va.push(`<vertex x="${pos.getX(i).toFixed(4)}" y="${pos.getY(i).toFixed(4)}" z="${pos.getZ(i).toFixed(4)}"/>`);
-  }
-  if(idx){
-    for(let i=0;i<idx.count;i+=3){
-      ta.push(`<triangle v1="${idx.getX(i)}" v2="${idx.getX(i+1)}" v3="${idx.getX(i+2)}"/>`);
-    }
-  } else {
-    for(let i=0;i<pos.count;i+=3){
-      ta.push(`<triangle v1="${i}" v2="${i+1}" v3="${i+2}"/>`);
-    }
-  }
-  const model=`<?xml version="1.0" encoding="UTF-8"?>
-<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
-<resources><object id="1" type="model"><mesh><vertices>${va.join('')}</vertices><triangles>${ta.join('')}</triangles></mesh></object></resources>
-<build><item objectid="1" transform="1 0 0 0 1 0 0 0 1 0 0 0"/></build>
-</model>`;
-  const ct=`<?xml version="1.0" encoding="UTF-8"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/></Types>`;
-  const rels=`<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/startpart"/></Relationships>`;
-  const zipped=zipSync({
-    '[Content_Types].xml':strToU8(ct),
-    '_rels/.rels':strToU8(rels),
-    '3D/3dmodel.model':strToU8(model)
-  });
-  return new Blob([zipped],{type:'application/vnd.ms-package.3dmanufacturing-3dmodel+xml'});
-}
-
 function doExport(){
   const name=(document.getElementById('exp-name').value||'untitled-vase').replace(/[\\\/]/g,'-').trim()||'untitled-vase';
   // Fresh geometry at the EXPORT resolution — viewport mesh untouched
   const geo=buildGeometry({...state, resolution:expRes});
   let blob, ext;
   try {
-    if(expFmt==='3mf'){
-      blob=export3MF(geo); ext='3mf';
-    } else {
-      const res=stlExporter.parse(new THREE.Mesh(geo),{binary:expFmt==='stl-bin'});
-      blob=new Blob([res],{type:'model/stl'}); ext='stl';
-    }
+    const res=stlExporter.parse(new THREE.Mesh(geo),{binary:expFmt==='stl-bin'});
+    blob=new Blob([res],{type:'model/stl'}); ext='stl';
   } finally {
     geo.dispose();
   }
