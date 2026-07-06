@@ -2162,7 +2162,7 @@ function buildStudioScene(hex, geo){
   sc.background=new THREE.Color(0xF6F1E7);                  // paper-cream backdrop
   const g=geo||vaseMesh.geometry;
   if(g){
-    const clay=new THREE.MeshStandardMaterial({color:new THREE.Color('#'+hex),roughness:0.55,metalness:0});
+    const clay=new THREE.MeshStandardMaterial({color:new THREE.Color('#'+hex),roughness:0.55,metalness:0,side:THREE.DoubleSide});
     const m=new THREE.Mesh(g, clay); m.castShadow=true; m.receiveShadow=true; sc.add(m);
   }
   const paper=new THREE.MeshStandardMaterial({color:0xF6F1E7,roughness:1});
