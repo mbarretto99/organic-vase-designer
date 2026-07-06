@@ -2116,13 +2116,21 @@ function roomEnvTex(){
 }
 function buildRTScene(envTex,useHDRIbg){
   const sc=new THREE.Scene();
-  sc.environment=envTex; sc.environmentIntensity=1;
+  sc.environment=envTex; sc.environmentIntensity=1.4;       // brighter ambient so the env alone doesn't backlight the vase
   sc.background = useHDRIbg ? envTex : new THREE.Color(0xE9DFC4);
-  if(vaseMesh){ sc.add(new THREE.Mesh(vaseMesh.geometry, graniteMaterial())); }
+  if(vaseMesh){
+    const clay=new THREE.MeshStandardMaterial({color:0xEAE3D2,roughness:0.6,metalness:0}); // off-white matte
+    sc.add(new THREE.Mesh(vaseMesh.geometry, clay));
+  }
   const wood=new THREE.MeshStandardMaterial({color:0x4a3527,roughness:0.55,metalness:0});
   const top=new THREE.Mesh(new THREE.CylinderGeometry(140,140,10,72),wood); top.position.y=-5; sc.add(top);
   const floor=new THREE.Mesh(new THREE.CircleGeometry(900,64),new THREE.MeshStandardMaterial({color:0x3b2f24,roughness:0.9}));
   floor.rotation.x=-Math.PI/2; floor.position.y=-40; sc.add(floor);
+  // Front fill lights — the lounge HDRI backlights the vase, so add studio lights
+  // around the camera hemisphere to illuminate the visible (front) side.
+  const key=new THREE.DirectionalLight(0xffffff,1.5); key.position.set(120,260,360); sc.add(key);
+  const fill=new THREE.DirectionalLight(0xfff4e6,0.9); fill.position.set(-320,200,120); sc.add(fill);
+  const rim=new THREE.DirectionalLight(0xffffff,0.7); rim.position.set(-40,280,-340); sc.add(rim);
   return sc;
 }
 async function startRaytrace(choice){
