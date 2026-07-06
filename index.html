@@ -141,14 +141,7 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
         <button class="vbtn" data-res="draft">Draft</button>
         <button class="vbtn on" data-res="standard">Std</button>
         <button class="vbtn" data-res="fine">Fine</button>
-        <button class="vbtn" data-res="raytrace">Raytrace</button>
       </div>
-    </div>
-    <div id="rt-chooser" style="display:none;position:absolute;top:60px;left:50%;transform:translateX(-50%);gap:6px;align-items:center;background:var(--panel-bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;z-index:30">
-      <span style="font-size:11px;color:var(--text-muted);margin-right:4px">Raytrace scene</span>
-      <button class="vbtn" data-rtenv="room">Built-in room</button>
-      <button class="vbtn" data-rtenv="hdri">Real HDRI</button>
-      <button class="vbtn" id="rt-cancel">Cancel</button>
     </div>
     <div id="rt-overlay" style="display:none;position:absolute;left:12px;bottom:12px;align-items:center;gap:8px;background:var(--panel-bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;z-index:30">
       <div id="rt-text" style="font-size:11px;color:var(--text-muted);white-space:nowrap">Raytracing…</div>
@@ -1781,7 +1774,6 @@ document.getElementById('svg-file-input').addEventListener('change',e=>{
 document.querySelectorAll('#res-group .vbtn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     const r=btn.dataset.res;
-    if(r==='raytrace'){ showRTChooser(true); return; }   // pick scene, then render
     stopRaytrace();
     document.querySelectorAll('#res-group .vbtn').forEach(b=>b.classList.remove('on'));
     btn.classList.add('on');state.resolution=r;
@@ -2187,13 +2179,10 @@ function buildStudioScene(hex, geo){
 }
 function buildPromptTxt(colourName){
   return [
-    'Forma Flora — AI product placement prompts',
+    'Forma Flora — AI product placement prompt',
     'Vessel colour: '+colourName,
     '',
-    'HOW TO USE: attach the studio render (-studio.png) as the image reference in nano banana 2 or Midjourney, then paste one of the prompts below. The "keep its geometry... perfectly identical" clause stops the model redesigning the vase.',
-    '',
-    '=== BRIGHT SCANDINAVIAN (product/grid shot, 4:5) ===',
-    'Place this exact '+colourName+' vessel (keep its geometry, proportions, <distinctive features e.g. vertical flutes / organic wavy rim> and matte finish perfectly identical) on pale oak furniture against warm white plaster walls, soft diffused daylight from a window at left, sheer linen curtain blurred in the background. A few dried grasses in the vase. Photorealistic interior photography, 50mm lens, shallow depth of field, calm warm minimal aesthetic.',
+    'HOW TO USE: attach the studio render (-studio.png) as the image reference in nano banana 2 or Midjourney, then paste the prompt below. The "keep its geometry... perfectly identical" clause stops the model redesigning the vase.',
     '',
     '=== WARM EARTHY (hero/feature shot, 4:5 or 16:9) ===',
     'Place this exact '+colourName+' vessel (keep its geometry, proportions, <distinctive features> and matte finish perfectly identical) on a walnut console against a textured clay-plaster wall, low golden-hour sunlight raking across the wall, terracotta and rattan accents softly blurred, 35mm lens, cinematic warm editorial style.',
@@ -2214,7 +2203,7 @@ async function startStudioExport(hex, colourName, baseName){
     // live canvas can come back blank (no preserveDrawingBuffer); a render target is
     // always readable, so the PNG captures reliably.
     const W=1440,H=1800;
-    const rt=new THREE.WebGLRenderTarget(W,H,{samples:4});
+    const rt=new THREE.WebGLRenderTarget(W,H);
     renderer.setRenderTarget(rt);
     renderer.render(studio, camera);
     renderer.setRenderTarget(null);
@@ -2223,7 +2212,7 @@ async function startStudioExport(hex, colourName, baseName){
     rt.dispose();
     geo.dispose();
     if(studio) studio.traverse(o=>{ if(o.geometry&&o.geometry!==geo) o.geometry.dispose(); if(o.material&&o.material.dispose) o.material.dispose(); });
-    rtExporting=false; setRTProgress('',0);
+    onResize(); rtExporting=false; setRTProgress('',0);
     // Flip WebGL's bottom-up rows into a 2D canvas, then encode the PNG.
     const c2=document.createElement('canvas'); c2.width=W; c2.height=H;
     const ctx=c2.getContext('2d'); const id=ctx.createImageData(W,H);
@@ -2231,7 +2220,7 @@ async function startStudioExport(hex, colourName, baseName){
     ctx.putImageData(id,0,0);
     c2.toBlob(blob=>{
       if(blob) downloadBlob(blob, baseName+'-studio.png');
-      downloadBlob(new Blob([buildPromptTxt(colourName)],{type:'text/plain;charset=utf-8'}), baseName+'-prompt.txt');
+      setTimeout(()=>downloadBlob(new Blob([buildPromptTxt(colourName)],{type:'text/plain;charset=utf-8'}), baseName+'-prompt.txt'),400);
     },'image/png');
   }catch(err){
     console.error('studio export failed',err);
@@ -2240,7 +2229,6 @@ async function startStudioExport(hex, colourName, baseName){
   }
 }
 document.querySelectorAll('[data-rtenv]').forEach(b=>b.addEventListener('click',()=>startRaytrace(b.dataset.rtenv)));
-document.getElementById('rt-cancel').addEventListener('click',()=>{ showRTChooser(false); setResButtonOn(state.resolution||'standard'); });
 orb.addEventListener('change',()=>{ if(raytracing&&!rtBusy) rtNeedReset=true; });
 
 (function loop(){requestAnimationFrame(loop);
