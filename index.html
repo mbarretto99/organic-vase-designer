@@ -342,7 +342,21 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
       <div class="vgroup" style="padding:3px">
         <button class="vbtn on" data-expfmt="stl-bin" style="flex:1">STL Binary</button>
         <button class="vbtn" data-expfmt="stl-ascii" style="flex:1">STL ASCII</button>
+        <button class="vbtn" data-expfmt="ai" style="flex:1">AI Render</button>
       </div>
+    </div>
+    <div class="cr" id="exp-ai-row" style="display:none">
+      <div class="cl"><span>Render Colour</span></div>
+      <select id="exp-aicol" style="background:#E5D9BC;border:1px solid var(--border);border-radius:5px;color:var(--text);padding:5px 6px;font-size:12px;font-family:inherit;outline:none;width:100%">
+        <option value="F0F0F0">Matte White</option>
+        <option value="D4CCA7">Oak</option>
+        <option value="8F866C">Moss</option>
+        <option value="6A7251">Olive</option>
+        <option value="757575">Stone</option>
+        <option value="122E53">Deep Blue</option>
+        <option value="471E1E">Rosewood</option>
+        <option value="4C4028">Walnut</option>
+      </select>
     </div>
     <div class="cr">
       <div class="cl"><span>Resolution</span></div>
@@ -2000,6 +2014,9 @@ const expModal=document.getElementById('export-modal');
 document.querySelectorAll('#export-modal [data-expfmt]').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('#export-modal [data-expfmt]').forEach(x=>x.classList.remove('on'));
   b.classList.add('on'); expFmt=b.dataset.expfmt;
+  const ai=expFmt==='ai';
+  document.getElementById('exp-ai-row').style.display = ai?'flex':'none';
+  document.getElementById('exp-res-group').parentElement.style.display = ai?'none':'flex';
 }));
 document.querySelectorAll('#export-modal [data-expres]').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('#export-modal [data-expres]').forEach(x=>x.classList.remove('on'));
@@ -2015,6 +2032,13 @@ function openExportModal(){
 
 function doExport(){
   const name=(document.getElementById('exp-name').value||'untitled-vase').replace(/[\\\/]/g,'-').trim()||'untitled-vase';
+  if(expFmt==='ai'){
+    const sel=document.getElementById('exp-aicol');
+    const hex=sel.value, colourName=sel.options[sel.selectedIndex].text;
+    expModal.style.display='none';
+    startStudioExport(hex, colourName, name);
+    return;
+  }
   // Fresh geometry at the EXPORT resolution — viewport mesh untouched
   const geo=buildGeometry({...state, resolution:expRes});
   let blob, ext;
@@ -2045,8 +2069,9 @@ window.addEventListener('resize',onResize);onResize();
 // ═══════════════════════════════════════════════════════════════════
 // RAYTRACE — GPU path tracer (shares the main renderer/canvas)
 // ═══════════════════════════════════════════════════════════════════
-let pt=null, rtScene=null, raytracing=false, rtBusy=false, rtNeedReset=false;
+let pt=null, rtScene=null, raytracing=false, rtExporting=false, rtBusy=false, rtNeedReset=false;
 const RT_TARGET=512;
+const STUDIO_TARGET=256;
 let graniteMaps=null, hdriTex=null;
 
 function setRTProgress(text,pct,isErr){
@@ -2116,11 +2141,73 @@ function stopRaytrace(){
   rtScene=null; renderer.autoClear=true;
   setRTProgress('',0); showRTChooser(false);
 }
+// ── AI EXPORT: neutral studio render (clay, brand colour) + prompt TXT ──────
+function buildStudioScene(hex){
+  const sc=new THREE.Scene();
+  sc.environment=roomEnvTex(); sc.environmentIntensity=1.1;
+  sc.background=new THREE.Color(0xF6F1E7);                 // paper-cream backdrop
+  if(vaseMesh){
+    const clay=new THREE.MeshStandardMaterial({color:new THREE.Color('#'+hex),roughness:0.55,metalness:0});
+    sc.add(new THREE.Mesh(vaseMesh.geometry, clay));
+  }
+  const paper=new THREE.MeshStandardMaterial({color:0xF6F1E7,roughness:1});
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(2400,2400),paper); floor.rotation.x=-Math.PI/2; sc.add(floor);
+  const key=new THREE.DirectionalLight(0xffffff,1.6); key.position.set(-300,500,300); sc.add(key);
+  const rim=new THREE.DirectionalLight(0xffffff,0.5); rim.position.set(200,350,-300); sc.add(rim);
+  return sc;
+}
+function buildPromptTxt(colourName){
+  return [
+    'Forma Flora — AI product placement prompts',
+    'Vessel colour: '+colourName,
+    '',
+    'HOW TO USE: attach the studio render (-studio.png) as the image reference in nano banana 2 or Midjourney, then paste one of the prompts below. The "keep its geometry... perfectly identical" clause stops the model redesigning the vase.',
+    '',
+    '=== BRIGHT SCANDINAVIAN (product/grid shot, 4:5) ===',
+    'Place this exact '+colourName+' vessel (keep its geometry, proportions, <distinctive features e.g. vertical flutes / organic wavy rim> and matte finish perfectly identical) on pale oak furniture against warm white plaster walls, soft diffused daylight from a window at left, sheer linen curtain blurred in the background. A few dried grasses in the vase. Photorealistic interior photography, 50mm lens, shallow depth of field, calm warm minimal aesthetic.',
+    '',
+    '=== WARM EARTHY (hero/feature shot, 4:5 or 16:9) ===',
+    'Place this exact '+colourName+' vessel (keep its geometry, proportions, <distinctive features> and matte finish perfectly identical) on a walnut console against a textured clay-plaster wall, low golden-hour sunlight raking across the wall, terracotta and rattan accents softly blurred, 35mm lens, cinematic warm editorial style.',
+    ''
+  ].join('\n');
+}
+async function startStudioExport(hex, colourName, baseName){
+  if(!vaseMesh){ alert('Nothing to render.'); return; }
+  if(raytracing||pt) stopRaytrace();
+  rtExporting=true;
+  let ptx=null, studio=null;
+  try{
+    setRTProgress('Preparing studio render…',0);
+    const {WebGLPathTracer}=await import('three-gpu-pathtracer');
+    studio=buildStudioScene(hex);
+    renderer.setSize(1440,1800,false); camera.aspect=1440/1800; camera.updateProjectionMatrix();
+    ptx=new WebGLPathTracer(renderer);
+    ptx.renderScale=1; ptx.dynamicLowRes=false; ptx.bounces=6; ptx.tiles.set(2,2);
+    await ptx.setSceneAsync({scene:studio, camera});
+    await new Promise(res=>{ const tick=()=>{ try{ ptx.renderSample(); }catch(e){ return res(e); }
+      const pct=Math.min(100,Math.round(ptx.samples/STUDIO_TARGET*100)); setRTProgress('Rendering studio shot… '+pct+'%',pct);
+      if(ptx.samples>=STUDIO_TARGET) return res(); requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
+    ptx.renderSample();   // fresh full-quality frame immediately before capture
+    renderer.domElement.toBlob(blob=>{
+      if(blob) downloadBlob(blob, baseName+'-studio.png');
+      downloadBlob(new Blob([buildPromptTxt(colourName)],{type:'text/plain;charset=utf-8'}), baseName+'-prompt.txt');
+      try{ptx.dispose();}catch(e){}
+      if(studio) studio.traverse(o=>{ if(o.geometry&&o!==vaseMesh) o.geometry.dispose(); if(o.material&&o.material.dispose) o.material.dispose(); });
+      onResize(); rtExporting=false; setRTProgress('',0);
+    },'image/png');
+  }catch(err){
+    console.error('studio export failed',err);
+    if(ptx){try{ptx.dispose();}catch(e){}}
+    onResize(); rtExporting=false; setRTProgress('Studio render failed: '+err.message,0,true);
+  }
+}
 document.querySelectorAll('[data-rtenv]').forEach(b=>b.addEventListener('click',()=>startRaytrace(b.dataset.rtenv)));
 document.getElementById('rt-cancel').addEventListener('click',()=>{ showRTChooser(false); setResButtonOn(state.resolution||'standard'); });
 orb.addEventListener('change',()=>{ if(raytracing&&!rtBusy) rtNeedReset=true; });
 
-(function loop(){requestAnimationFrame(loop);orb.update();
+(function loop(){requestAnimationFrame(loop);
+  if(rtExporting) return;
+  orb.update();
   if(raytracing&&pt){
     if(rtBusy){ renderer.render(scene,camera); return; }
     if(rtNeedReset){ pt.updateCamera(camera); pt.reset(); rtNeedReset=false; setRTProgress('Raytracing… 0%',0); }
