@@ -2209,14 +2209,29 @@ async function startStudioExport(hex, colourName, baseName){
     setRTProgress('Rendering studio shot…',100);            // single viewport frame — near-instant
     geo=buildGeometry({...state, resolution:'fine'});        // clean, fine-resolution mesh
     studio=buildStudioScene(hex, geo);
-    renderer.setSize(1440,1800,false); camera.aspect=1440/1800; camera.updateProjectionMatrix();
-    renderer.render(studio, camera);                         // normal viewport renderer, one frame
-    renderer.domElement.toBlob(blob=>{
+    camera.aspect=1440/1800; camera.updateProjectionMatrix();
+    // Render to an offscreen target and read pixels directly. A plain toBlob on the
+    // live canvas can come back blank (no preserveDrawingBuffer); a render target is
+    // always readable, so the PNG captures reliably.
+    const W=1440,H=1800;
+    const rt=new THREE.WebGLRenderTarget(W,H,{samples:4});
+    renderer.setRenderTarget(rt);
+    renderer.render(studio, camera);
+    renderer.setRenderTarget(null);
+    const px=new Uint8Array(W*H*4);
+    renderer.readRenderTargetPixels(rt,0,0,W,H,px);
+    rt.dispose();
+    geo.dispose();
+    if(studio) studio.traverse(o=>{ if(o.geometry&&o.geometry!==geo) o.geometry.dispose(); if(o.material&&o.material.dispose) o.material.dispose(); });
+    rtExporting=false; setRTProgress('',0);
+    // Flip WebGL's bottom-up rows into a 2D canvas, then encode the PNG.
+    const c2=document.createElement('canvas'); c2.width=W; c2.height=H;
+    const ctx=c2.getContext('2d'); const id=ctx.createImageData(W,H);
+    for(let y=0;y<H;y++){ const s=(H-1-y)*W*4, d=y*W*4; id.data.set(px.subarray(s,s+W*4),d); }
+    ctx.putImageData(id,0,0);
+    c2.toBlob(blob=>{
       if(blob) downloadBlob(blob, baseName+'-studio.png');
       downloadBlob(new Blob([buildPromptTxt(colourName)],{type:'text/plain;charset=utf-8'}), baseName+'-prompt.txt');
-      geo.dispose();
-      if(studio) studio.traverse(o=>{ if(o.geometry&&o.geometry!==geo) o.geometry.dispose(); if(o.material&&o.material.dispose) o.material.dispose(); });
-      onResize(); rtExporting=false; setRTProgress('',0);
     },'image/png');
   }catch(err){
     console.error('studio export failed',err);
