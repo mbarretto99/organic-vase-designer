@@ -2098,7 +2098,22 @@ function graniteMaterial(){
 }
 function loadHDRI(){ return new Promise((res,rej)=>{ if(hdriTex)return res(hdriTex);
   new RGBELoader().load('hdri/lythwood_lounge_2k.hdr',(t)=>{t.mapping=THREE.EquirectangularReflectionMapping;hdriTex=t;res(t);},undefined,rej); }); }
-function roomEnvTex(){ const pmrem=new THREE.PMREMGenerator(renderer); const tex=pmrem.fromScene(new RoomEnvironment(),0.04).texture; pmrem.dispose(); return tex; }
+function roomEnvTex(){
+  // Procedural equirectangular env (warm soft studio). Must be an equirectangular
+  // float texture because three-gpu-pathtracer samples the env via .image.data —
+  // a PMREM cube texture has no such array and throws in the env CDF builder.
+  const w=64,h=32, data=new Float32Array(w*h*4);
+  for(let y=0;y<h;y++){
+    const v=y/(h-1);                                            // 0 top .. 1 bottom
+    const band=Math.exp(-Math.pow((v-0.34)/0.22,2));            // bright warm band, upper third
+    const inten=0.35+1.1*band;
+    const r=inten*1.0, g=inten*0.95, b=inten*0.84;
+    for(let x=0;x<w;x++){ const o=(y*w+x)*4; data[o]=r; data[o+1]=g; data[o+2]=b; data[o+3]=1; }
+  }
+  const tex=new THREE.DataTexture(data,w,h,THREE.RGBAFormat,THREE.FloatType);
+  tex.mapping=THREE.EquirectangularReflectionMapping; tex.needsUpdate=true;
+  return tex;
+}
 function buildRTScene(envTex,useHDRIbg){
   const sc=new THREE.Scene();
   sc.environment=envTex; sc.environmentIntensity=1;
