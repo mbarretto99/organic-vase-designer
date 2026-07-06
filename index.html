@@ -174,10 +174,11 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
             <button class="vbtn" data-rim="random" style="flex:1;text-align:center">Random</button>
           </div>
           <div id="rim-controls" style="display:none;flex-direction:column;gap:9px">
-            <div class="cr"><div class="cl"><span>Peak Count</span><span class="v" id="v-rimcount">8</span></div><input type="range" id="sl-rimcount" min="2" max="20" value="8" step="1"/></div>
+            <div class="cr"><div class="cl"><span>Peak Count</span><span class="v" id="v-rimcount">8</span></div><input type="range" id="sl-rimcount" min="2" max="20" value="8" step="2"/></div>
             <div class="cr"><div class="cl"><span>Amplitude</span><span class="v" id="v-rimamp">6.0%</span></div><input type="range" id="sl-rimamp" min="0" max="10" value="6" step="0.5"/></div>
             <button class="hbtn" id="btn-rim-rand" style="width:100%;justify-content:center">🎲 Randomise</button>
           </div>
+          <div id="tilt-controls">
           <div class="cr"><div class="cl"><span>Tilt</span><span class="v" id="v-tilt">0%</span></div><input type="range" id="sl-tilt" min="-100" max="100" value="0" step="1"/></div>
           <div style="font-size:10px;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin-top:2px">Tilt Curve</div>
           <div style="display:flex;gap:6px;margin-bottom:4px">
@@ -186,6 +187,7 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
           </div>
           <div id="tilt-curve-controls" style="display:none">
             <div class="cr"><div class="cl"><span>Curve Power</span><span class="v" id="v-curvepow">2.0</span></div><input type="range" id="sl-curvepow" min="1.1" max="6" value="2" step="0.1"/></div>
+          </div>
           </div>
         </div>
       </div>
@@ -1087,10 +1089,16 @@ function insetRingNormal(ring, A, dist){
   return out;
 }
 function rollRim(count){
-  const n=Math.max(2,Math.min(20,Math.round(count)));
+  let n=Math.max(2,Math.min(20,Math.round(count)));
+  if(n%2) n--;                          // even count -> seamless peak/trough alternation around the wrap
+  const angles=[]; for(let i=0;i<n;i++) angles.push(Math.random()*Math.PI*2);
+  angles.sort((a,b)=>a-b);
   const pts=[];
-  for(let i=0;i<n;i++){ pts.push({a:Math.random()*Math.PI*2, f:Math.random()*2-1}); }
-  pts.sort((p,q)=>p.a-q.a);
+  for(let i=0;i<n;i++){
+    const mag=0.3+0.7*Math.random();    // 0.3..1.0, varied per point
+    const sign=(i%2===0)?1:-1;          // alternate IN ANGLE ORDER: peak, trough, peak, trough...
+    pts.push({a:angles[i], f:sign*mag});
+  }
   return pts;
 }
 function buildGeometry(s) {
@@ -1536,9 +1544,21 @@ document.getElementById('tilt-curved').addEventListener('click',()=>{
 function setRimMode(m){
   state.topAdj.rim=m;
   document.querySelectorAll('[data-rim]').forEach(b=>b.classList.toggle('on',b.dataset.rim===m));
-  document.getElementById('rim-controls').style.display = m==='random'?'flex':'none';
-  if(m==='random' && (!Array.isArray(state.topAdj.rimPts)||state.topAdj.rimPts.length<2)){
-    state.topAdj.rimPts=rollRim(state.topAdj.rimCount||8);
+  const isRandom = m==='random';
+  document.getElementById('rim-controls').style.display = isRandom?'flex':'none';
+  document.getElementById('tilt-controls').style.display = isRandom?'none':'block';
+  if(isRandom){
+    // Uniform and Random are exclusive: zero tilt + force Linear so no tilt deformation
+    // remains, then the random rim takes over.
+    state.topAdj.tilt=0; state.topAdj.mode='linear';
+    document.getElementById('sl-tilt').value=0;
+    document.getElementById('v-tilt').textContent='0%';
+    document.getElementById('tilt-linear').classList.add('on');
+    document.getElementById('tilt-curved').classList.remove('on');
+    document.getElementById('tilt-curve-controls').style.display='none';
+    if(!Array.isArray(state.topAdj.rimPts)||state.topAdj.rimPts.length<2){
+      state.topAdj.rimPts=rollRim(state.topAdj.rimCount||8);
+    }
   }
   schedRebuild();markUnsaved();
 }
@@ -1816,6 +1836,7 @@ function syncAllUI(){
     document.getElementById('tilt-curve-controls').style.display=isLinear?'none':'flex';
     document.querySelectorAll('[data-rim]').forEach(b=>b.classList.toggle('on',b.dataset.rim===(state.topAdj.rim||'uniform')));
     document.getElementById('rim-controls').style.display=(state.topAdj.rim||'uniform')==='random'?'flex':'none';
+    document.getElementById('tilt-controls').style.display=(state.topAdj.rim||'uniform')==='random'?'none':'block';
     document.getElementById('sl-rimcount').value=state.topAdj.rimCount??8;
     document.getElementById('v-rimcount').textContent=String(state.topAdj.rimCount??8);
     document.getElementById('sl-rimamp').value=state.topAdj.rimAmp??6;
