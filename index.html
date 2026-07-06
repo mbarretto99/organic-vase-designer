@@ -1091,14 +1091,15 @@ function insetRingNormal(ring, A, dist){
 function rollRim(count){
   let n=Math.max(2,Math.min(20,Math.round(count)));
   if(n%2) n--;                          // even count -> seamless peak/trough alternation around the wrap
-  const angles=[]; for(let i=0;i<n;i++) angles.push(Math.random()*Math.PI*2);
-  angles.sort((a,b)=>a-b);
+  const TAU=Math.PI*2, spacing=TAU/n, jitter=spacing*0.30;  // spread + organic (gaps stay 70-130% of a slot)
   const pts=[];
   for(let i=0;i<n;i++){
+    const a=(i*spacing + (Math.random()-0.5)*jitter + TAU)%TAU;
     const mag=0.3+0.7*Math.random();    // 0.3..1.0, varied per point
-    const sign=(i%2===0)?1:-1;          // alternate IN ANGLE ORDER: peak, trough, peak, trough...
-    pts.push({a:angles[i], f:sign*mag});
+    const sign=(i%2===0)?1:-1;          // peak, trough, peak, trough... in angle order
+    pts.push({a, f:sign*mag});
   }
+  pts.sort((p,q)=>p.a-q.a);
   return pts;
 }
 function buildGeometry(s) {
@@ -1159,6 +1160,11 @@ function buildGeometry(s) {
       return pts[j].f+(pts[k].f-pts[j].f)*m;
     };
     rimLUT=new Array(A); for(let i=0;i<A;i++) rimLUT[i]=sampleF(i/A*TAU);
+    // Light closed-loop blur (sized to feature count) to round any tight bends.
+    const sR=Math.max(1,Math.round(A/(pts.length*5)));
+    const sm=new Array(A);
+    for(let i=0;i<A;i++){ let sum=0; for(let k=-sR;k<=sR;k++) sum+=rimLUT[((i+k)%A+A)%A]; sm[i]=sum/(2*sR+1); }
+    rimLUT=sm;
     rimAmpH=(s.topAdj.rimAmp||0)/100*H;
   }
 
