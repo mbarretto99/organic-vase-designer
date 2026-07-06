@@ -169,6 +169,15 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
       <div class="sec">
         <div class="sec-hd" data-s="topadj">Top Adjustment <span class="chev">▾</span></div>
         <div class="sec-bd" id="bd-topadj">
+          <div style="display:flex;gap:6px;margin-bottom:6px">
+            <button class="vbtn on" data-rim="uniform" style="flex:1;text-align:center">Uniform</button>
+            <button class="vbtn" data-rim="random" style="flex:1;text-align:center">Random</button>
+          </div>
+          <div id="rim-controls" style="display:none;flex-direction:column;gap:9px">
+            <div class="cr"><div class="cl"><span>Peak Count</span><span class="v" id="v-rimcount">8</span></div><input type="range" id="sl-rimcount" min="2" max="20" value="8" step="1"/></div>
+            <div class="cr"><div class="cl"><span>Amplitude</span><span class="v" id="v-rimamp">6.0%</span></div><input type="range" id="sl-rimamp" min="0" max="10" value="6" step="0.5"/></div>
+            <button class="hbtn" id="btn-rim-rand" style="width:100%;justify-content:center">🎲 Randomise</button>
+          </div>
           <div class="cr"><div class="cl"><span>Tilt</span><span class="v" id="v-tilt">0%</span></div><input type="range" id="sl-tilt" min="-100" max="100" value="0" step="1"/></div>
           <div style="font-size:10px;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin-top:2px">Tilt Curve</div>
           <div style="display:flex;gap:6px;margin-bottom:4px">
@@ -804,7 +813,11 @@ const state = {
   topAdj: {
     tilt: 0,
     curve: 2,
-    mode: 'linear'
+    mode: 'linear',
+    rim: 'uniform',      // 'uniform' (tilt only) | 'random' (tilt + random rim variation)
+    rimCount: 8,         // peaks/valleys around the rim (2..20)
+    rimAmp: 6,           // max peak deviation, % of vase height (0..10)
+    rimPts: []           // rolled control points [{a,f}], f in [-1,1]; empty until first roll
   },
   waves: {
     enabled: false,
@@ -1073,6 +1086,13 @@ function insetRingNormal(ring, A, dist){
   }
   return out;
 }
+function rollRim(count){
+  const n=Math.max(2,Math.min(20,Math.round(count)));
+  const pts=[];
+  for(let i=0;i<n;i++){ pts.push({a:Math.random()*Math.PI*2, f:Math.random()*2-1}); }
+  pts.sort((p,q)=>p.a-q.a);
+  return pts;
+}
 function buildGeometry(s) {
   const {V,A}=RES[s.resolution]||EXPORT_RES[s.resolution];
   const PROF_SAMPLES=A+1; // match angular resolution
@@ -1112,6 +1132,27 @@ function buildGeometry(s) {
     });
     if(tiltMaxR<0.001) tiltMaxR=1;
   }
+  // RANDOM RIM - per-angle height variation around the top rim (stacks on tilt).
+  // rimPts are control points {a:angle, f:height in [-1,1]}; actual dy = f*(rimAmp/100)*H,
+  // ramped over the top zone (same zone as tilt). Smooth cosine interpolation around
+  // the closed loop keeps the rim within +/- rimAmp (no overshoot).
+  const doRim = s.topAdj && s.topAdj.rim==='random' && Array.isArray(s.topAdj.rimPts) && s.topAdj.rimPts.length>=2;
+  let rimLUT=null, rimAmpH=0;
+  if(doRim){
+    const pts=s.topAdj.rimPts.slice().sort((p,q)=>p.a-q.a);
+    const TAU=Math.PI*2;
+    const sampleF=(x)=>{
+      x=((x%TAU)+TAU)%TAU; const n=pts.length;
+      let j=-1; for(let i=0;i<n;i++){ if(pts[i].a<=x) j=i; else break; }
+      if(j<0) j=n-1;
+      const k=(j+1)%n; let a0=pts[j].a, a1=pts[k].a; if(a1<=a0) a1+=TAU;
+      let xx=x; if(xx<a0) xx+=TAU;
+      const t=a1>a0?(xx-a0)/(a1-a0):0, m=(1-Math.cos(t*Math.PI))/2;
+      return pts[j].f+(pts[k].f-pts[j].f)*m;
+    };
+    rimLUT=new Array(A); for(let i=0;i<A;i++) rimLUT[i]=sampleF(i/A*TAU);
+    rimAmpH=(s.topAdj.rimAmp||0)/100*H;
+  }
 
   // Helper: given normalised radius (0=centre,1=outer edge) and tiltAmt,
   // return the radial displacement profile f(normR).
@@ -1139,7 +1180,7 @@ function buildGeometry(s) {
     const tZoneStart = 1 - tiltZone;
     const rawP = (t - tZoneStart) / tiltZone; // <0 below zone, 0→1 in zone
     // Smooth ease-in so transition is seamless (no crease at zone entry)
-    const p = doTilt && rawP > 0 ? smoothstep(0, 1, rawP) : 0;
+    const p = (doTilt||doRim) && rawP > 0 ? smoothstep(0, 1, rawP) : 0;
 
     for(let ai=0;ai<=A;ai++){
       const ai2=ai%A;
@@ -1152,6 +1193,9 @@ function buildGeometry(s) {
         const normR  = Math.min(1, rO / tiltMaxR);
         const shape  = 1 - Math.pow(normR, tiltPow);
         dy = tiltAmt * shape * p * maxDisp;
+      }
+      if(doRim && p>0){
+        dy += rimLUT[ai2] * rimAmpH * p;
       }
 
       outerV[vi].push([px, y + dy, pz]);
@@ -1488,6 +1532,27 @@ document.getElementById('tilt-curved').addEventListener('click',()=>{
   schedRebuild();markUnsaved();
 });
 
+// Random rim (Top Adjustment -> Random)
+function setRimMode(m){
+  state.topAdj.rim=m;
+  document.querySelectorAll('[data-rim]').forEach(b=>b.classList.toggle('on',b.dataset.rim===m));
+  document.getElementById('rim-controls').style.display = m==='random'?'flex':'none';
+  if(m==='random' && (!Array.isArray(state.topAdj.rimPts)||state.topAdj.rimPts.length<2)){
+    state.topAdj.rimPts=rollRim(state.topAdj.rimCount||8);
+  }
+  schedRebuild();markUnsaved();
+}
+document.querySelectorAll('[data-rim]').forEach(b=>b.addEventListener('click',()=>setRimMode(b.dataset.rim)));
+(function(){
+  const el=document.getElementById('sl-rimcount'),vl=document.getElementById('v-rimcount');
+  el.addEventListener('input',()=>{vl.textContent=el.value;});
+  el.addEventListener('change',()=>{ state.topAdj.rimCount=parseInt(el.value,10); state.topAdj.rimPts=rollRim(state.topAdj.rimCount); schedRebuild();markUnsaved(); });
+})();
+sl('sl-rimamp','v-rimamp', v=>{state.topAdj.rimAmp=v;}, v=>`${v.toFixed(1)}%`);
+document.getElementById('btn-rim-rand').addEventListener('click',()=>{
+  state.topAdj.rimPts=rollRim(state.topAdj.rimCount||8); schedRebuild();markUnsaved();
+});
+
 // ── WAVE MODULATION WIRING ────────────────────────────────────────────────
 let activeWaveZone = 'top'; // which zone the wave sliders currently edit
 
@@ -1749,6 +1814,12 @@ function syncAllUI(){
     document.getElementById('tilt-linear').classList.toggle('on', isLinear);
     document.getElementById('tilt-curved').classList.toggle('on', !isLinear);
     document.getElementById('tilt-curve-controls').style.display=isLinear?'none':'flex';
+    document.querySelectorAll('[data-rim]').forEach(b=>b.classList.toggle('on',b.dataset.rim===(state.topAdj.rim||'uniform')));
+    document.getElementById('rim-controls').style.display=(state.topAdj.rim||'uniform')==='random'?'flex':'none';
+    document.getElementById('sl-rimcount').value=state.topAdj.rimCount??8;
+    document.getElementById('v-rimcount').textContent=String(state.topAdj.rimCount??8);
+    document.getElementById('sl-rimamp').value=state.topAdj.rimAmp??6;
+    document.getElementById('v-rimamp').textContent=`${(state.topAdj.rimAmp??6).toFixed(1)}%`;
   }
   // Resolution buttons
   document.querySelectorAll('[data-res]').forEach(b=>{
@@ -1830,6 +1901,10 @@ document.getElementById('btn-open').addEventListener('click',()=>{
   const loaded=JSON.parse(JSON.stringify(d.state));
   // Ensure topAdj exists (files saved before it was added)
   if(!loaded.topAdj) loaded.topAdj={tilt:0,curve:2,mode:'linear'};
+  if(!loaded.topAdj.rim) loaded.topAdj.rim='uniform';
+  if(loaded.topAdj.rimCount==null) loaded.topAdj.rimCount=8;
+  if(loaded.topAdj.rimAmp==null) loaded.topAdj.rimAmp=6;
+  if(!Array.isArray(loaded.topAdj.rimPts)) loaded.topAdj.rimPts=[];
   // Ensure waves exists
   if(!loaded.waves) loaded.waves={enabled:false,linked:true,activeTab:'top',
     top:{ripple:12,amp:6,sharp:20,org:0,shape:'sine'},
@@ -1862,7 +1937,7 @@ document.getElementById('btn-open').addEventListener('click',()=>{
 document.getElementById('btn-new').addEventListener('click',()=>{
   if(confirm('Start new? Unsaved changes will be lost.')){
     Object.assign(state,{mode:'rpa',height:200,vasWidth:150,wall:2.5,baseThick:3,midPos:0.5,blend:0,phase:0,bot:defaultZone('bot'),mid:defaultZone('mid'),top:defaultZone('top'),resolution:'standard',showFloor:true,showXS:false,seed:Math.floor(Math.random()*99999),
-      topAdj:{tilt:0,curve:2,mode:'linear'},
+      topAdj:{tilt:0,curve:2,mode:'linear',rim:'uniform',rimCount:8,rimAmp:6,rimPts:[]},
       waves:{enabled:false,linked:true,activeTab:'top',top:{ripple:12,amp:6,sharp:20,org:0,shape:'sine'},bot:{ripple:12,amp:6,sharp:20,org:0,shape:'sine'}}});
     state.bot.scale=0;state.mid.scale=0;state.top.scale=0;
     undoStack.length=0;redoStack.length=0;updateUndoUI();
