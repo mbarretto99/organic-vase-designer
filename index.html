@@ -2198,11 +2198,11 @@ async function startStudioExport(hex, colourName, baseName){
     setRTProgress('Rendering studio shot…',100);            // single viewport frame — near-instant
     geo=buildGeometry({...state, resolution:'fine'});        // clean, fine-resolution mesh
     studio=buildStudioScene(hex, geo);
-    camera.aspect=1440/1800; camera.updateProjectionMatrix();
+    camera.aspect=2880/3600; camera.updateProjectionMatrix();
     // Render to an offscreen target and read pixels directly. A plain toBlob on the
     // live canvas can come back blank (no preserveDrawingBuffer); a render target is
     // always readable, so the PNG captures reliably.
-    const W=1440,H=1800;
+    const W=2880,H=3600;   // high-res export (~10MP)
     const rt=new THREE.WebGLRenderTarget(W,H);
     renderer.setRenderTarget(rt);
     renderer.render(studio, camera);
