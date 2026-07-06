@@ -141,7 +141,18 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
         <button class="vbtn" data-res="draft">Draft</button>
         <button class="vbtn on" data-res="standard">Std</button>
         <button class="vbtn" data-res="fine">Fine</button>
+        <button class="vbtn" data-res="raytrace">Raytrace</button>
       </div>
+    </div>
+    <div id="rt-chooser" style="display:none;position:absolute;top:60px;left:50%;transform:translateX(-50%);gap:6px;align-items:center;background:var(--panel-bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;z-index:30">
+      <span style="font-size:11px;color:var(--text-muted);margin-right:4px">Raytrace scene</span>
+      <button class="vbtn" data-rtenv="room">Built-in room</button>
+      <button class="vbtn" data-rtenv="hdri">Real HDRI</button>
+      <button class="vbtn" id="rt-cancel">Cancel</button>
+    </div>
+    <div id="rt-overlay" style="display:none;position:absolute;left:12px;bottom:12px;align-items:center;gap:8px;background:var(--panel-bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;z-index:30">
+      <div id="rt-text" style="font-size:11px;color:var(--text-muted);white-space:nowrap">Raytracing…</div>
+      <div style="width:180px;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div id="rt-bar" style="height:100%;width:0%;background:var(--accent-bright)"></div></div>
     </div>
     <button id="panel-toggle">‹ Params</button>
   </div>
@@ -353,11 +364,13 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
   </div>
 </div>
 
-<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.165.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.165.0/examples/jsm/","fflate":"https://unpkg.com/fflate@0.8.2/esm/browser.js"}}</script>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.165.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.165.0/examples/jsm/","three/examples/jsm/":"https://unpkg.com/three@0.165.0/examples/jsm/","three-gpu-pathtracer":"https://unpkg.com/three-gpu-pathtracer@0.0.23/build/index.module.js","three-mesh-bvh":"https://unpkg.com/three-mesh-bvh@0.7.4/build/index.module.js","fflate":"https://unpkg.com/fflate@0.8.2/esm/browser.js"}}</script>
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 // ═══════════════════════════════════════════════════════════════════
 // SVG PROFILE DATA — embedded from uploaded files
@@ -1753,9 +1766,12 @@ document.getElementById('svg-file-input').addEventListener('change',e=>{
 // ═══════════════════════════════════════════════════════════════════
 document.querySelectorAll('#res-group .vbtn').forEach(btn=>{
   btn.addEventListener('click',()=>{
+    const r=btn.dataset.res;
+    if(r==='raytrace'){ showRTChooser(true); return; }   // pick scene, then render
+    stopRaytrace();
     document.querySelectorAll('#res-group .vbtn').forEach(b=>b.classList.remove('on'));
-    btn.classList.add('on');state.resolution=btn.dataset.res;
-    document.getElementById('st-res').textContent=btn.dataset.res.charAt(0).toUpperCase()+btn.dataset.res.slice(1);
+    btn.classList.add('on');state.resolution=r;
+    document.getElementById('st-res').textContent=r.charAt(0).toUpperCase()+r.slice(1);
     schedRebuild();
   });
 });
@@ -1784,6 +1800,7 @@ document.querySelectorAll('.sec-hd').forEach(h=>{
 // Panel toggle
 let ppOpen=true;
 document.getElementById('panel-toggle').addEventListener('click',()=>{
+  if(raytracing||pt){ stopRaytrace(); setResButtonOn(state.resolution||'standard'); }
   ppOpen=!ppOpen;
   document.getElementById('pp').classList.toggle('closed',!ppOpen);
   document.getElementById('panel-toggle').textContent=ppOpen?'› Params':'‹ Params';
@@ -2024,7 +2041,94 @@ function onResize(){
   renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();
 }
 window.addEventListener('resize',onResize);onResize();
-(function loop(){requestAnimationFrame(loop);orb.update();renderer.render(scene,camera);})();
+
+// ═══════════════════════════════════════════════════════════════════
+// RAYTRACE — GPU path tracer (shares the main renderer/canvas)
+// ═══════════════════════════════════════════════════════════════════
+let pt=null, rtScene=null, raytracing=false, rtBusy=false, rtNeedReset=false;
+const RT_TARGET=512;
+let graniteMaps=null, hdriTex=null;
+
+function setRTProgress(text,pct,isErr){
+  const o=document.getElementById('rt-overlay'); if(!o)return;
+  o.style.display=(text||(raytracing&&!rtBusy))?'flex':'none';
+  const bar=document.getElementById('rt-bar'); if(bar)bar.style.width=Math.max(0,Math.min(100,pct||0))+'%';
+  const t=document.getElementById('rt-text'); if(t){ t.textContent=text||''; t.style.color=isErr?'#B23A3A':''; }
+}
+function showRTChooser(show){ const c=document.getElementById('rt-chooser'); if(c)c.style.display=show?'flex':'none'; }
+function setResButtonOn(res){ document.querySelectorAll('#res-group .vbtn').forEach(b=>b.classList.toggle('on',b.dataset.res===res)); }
+
+function ensureGranite(){
+  if(graniteMaps)return graniteMaps;
+  const L=new THREE.TextureLoader();
+  const mk=(u)=>{const t=L.load(u);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;return t;};
+  const diff=mk('textures/granite/granite_diff.jpg'); diff.colorSpace=THREE.SRGBColorSpace;
+  const nor=mk('textures/granite/granite_nor.jpg');
+  const rough=mk('textures/granite/granite_rough.jpg');
+  graniteMaps={diff,nor,rough}; return graniteMaps;
+}
+function graniteMaterial(){
+  const g=ensureGranite();
+  return new THREE.MeshStandardMaterial({map:g.diff,normalMap:g.nor,roughnessMap:g.rough,roughness:1,metalness:0.05});
+}
+function loadHDRI(){ return new Promise((res,rej)=>{ if(hdriTex)return res(hdriTex);
+  new RGBELoader().load('hdri/lythwood_lounge_2k.hdr',(t)=>{t.mapping=THREE.EquirectangularReflectionMapping;hdriTex=t;res(t);},undefined,rej); }); }
+function roomEnvTex(){ const pmrem=new THREE.PMREMGenerator(renderer); const tex=pmrem.fromScene(new RoomEnvironment(),0.04).texture; pmrem.dispose(); return tex; }
+function buildRTScene(envTex,useHDRIbg){
+  const sc=new THREE.Scene();
+  sc.environment=envTex; sc.environmentIntensity=1;
+  sc.background = useHDRIbg ? envTex : new THREE.Color(0xE9DFC4);
+  if(vaseMesh){ sc.add(new THREE.Mesh(vaseMesh.geometry, graniteMaterial())); }
+  const wood=new THREE.MeshStandardMaterial({color:0x4a3527,roughness:0.55,metalness:0});
+  const top=new THREE.Mesh(new THREE.CylinderGeometry(140,140,10,72),wood); top.position.y=-5; sc.add(top);
+  const floor=new THREE.Mesh(new THREE.CircleGeometry(900,64),new THREE.MeshStandardMaterial({color:0x3b2f24,roughness:0.9}));
+  floor.rotation.x=-Math.PI/2; floor.position.y=-40; sc.add(floor);
+  return sc;
+}
+async function startRaytrace(choice){
+  if(raytracing||pt) stopRaytrace();
+  showRTChooser(false);
+  raytracing=true; rtBusy=true;
+  setResButtonOn('raytrace');
+  setRTProgress(choice==='hdri'?'Loading HDRI…':'Building room…',0);
+  // auto-collapse the params panel for a full-width canvas
+  ppOpen=false; document.getElementById('pp').classList.add('closed',true);
+  document.getElementById('panel-toggle').textContent='‹ Params'; setTimeout(onResize,300);
+  try{
+    const {WebGLPathTracer}=await import('three-gpu-pathtracer');
+    let envTex = choice==='hdri' ? await loadHDRI() : roomEnvTex();
+    rtScene=buildRTScene(envTex, choice==='hdri');
+    pt=new WebGLPathTracer(renderer);
+    pt.renderScale=0.9; pt.dynamicLowRes=true; pt.bounces=6; pt.tiles.set(2,2);
+    await pt.setSceneAsync({scene:rtScene, camera});
+    rtBusy=false; rtNeedReset=false;
+    setRTProgress('Raytracing… 0%',0);
+  }catch(err){
+    console.error('Raytrace failed:',err);
+    raytracing=false; rtBusy=false; if(pt){try{pt.dispose();}catch(e){}pt=null;}
+    setRTProgress('Raytrace unavailable: '+err.message,0,true);
+    setResButtonOn(state.resolution||'standard');
+  }
+}
+function stopRaytrace(){
+  raytracing=false; rtBusy=false;
+  if(pt){ try{pt.dispose();}catch(e){} pt=null; }
+  rtScene=null; renderer.autoClear=true;
+  setRTProgress('',0); showRTChooser(false);
+}
+document.querySelectorAll('[data-rtenv]').forEach(b=>b.addEventListener('click',()=>startRaytrace(b.dataset.rtenv)));
+document.getElementById('rt-cancel').addEventListener('click',()=>{ showRTChooser(false); setResButtonOn(state.resolution||'standard'); });
+orb.addEventListener('change',()=>{ if(raytracing&&!rtBusy) rtNeedReset=true; });
+
+(function loop(){requestAnimationFrame(loop);orb.update();
+  if(raytracing&&pt){
+    if(rtBusy){ renderer.render(scene,camera); return; }
+    if(rtNeedReset){ pt.updateCamera(camera); pt.reset(); rtNeedReset=false; setRTProgress('Raytracing… 0%',0); }
+    pt.renderSample();
+    const pct=Math.min(100,Math.round(pt.samples/RT_TARGET*100));
+    setRTProgress('Raytracing… '+pct+'%',pct);
+  } else { renderer.render(scene,camera); }
+})();
 
 // ═══════════════════════════════════════════════════════════════════
 // INIT
