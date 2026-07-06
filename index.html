@@ -2165,18 +2165,24 @@ function stopRaytrace(){
   setRTProgress('',0); showRTChooser(false);
 }
 // ── AI EXPORT: neutral studio render (clay, brand colour) + prompt TXT ──────
-function buildStudioScene(hex){
+function buildStudioScene(hex, geo){
   const sc=new THREE.Scene();
-  sc.environment=roomEnvTex(); sc.environmentIntensity=1.1;
-  sc.background=new THREE.Color(0xF6F1E7);                 // paper-cream backdrop
-  if(vaseMesh){
+  sc.background=new THREE.Color(0xF6F1E7);                  // paper-cream backdrop
+  const g=geo||vaseMesh.geometry;
+  if(g){
     const clay=new THREE.MeshStandardMaterial({color:new THREE.Color('#'+hex),roughness:0.55,metalness:0});
-    sc.add(new THREE.Mesh(vaseMesh.geometry, clay));
+    const m=new THREE.Mesh(g, clay); m.castShadow=true; m.receiveShadow=true; sc.add(m);
   }
   const paper=new THREE.MeshStandardMaterial({color:0xF6F1E7,roughness:1});
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(2400,2400),paper); floor.rotation.x=-Math.PI/2; sc.add(floor);
-  const key=new THREE.DirectionalLight(0xffffff,1.6); key.position.set(-300,500,300); sc.add(key);
-  const rim=new THREE.DirectionalLight(0xffffff,0.5); rim.position.set(200,350,-300); sc.add(rim);
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(2400,2400),paper); floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; sc.add(floor);
+  // 3-point studio lighting (standard renderer) + soft sky/ground fill
+  sc.add(new THREE.HemisphereLight(0xffffff,0xd8c9a8,0.6));
+  const key=new THREE.DirectionalLight(0xffffff,1.6); key.position.set(-300,500,300);
+  key.castShadow=true; key.shadow.mapSize.set(2048,2048);
+  key.shadow.camera.near=10; key.shadow.camera.far=2000; key.shadow.camera.left=-400; key.shadow.camera.right=400; key.shadow.camera.top=700; key.shadow.camera.bottom=-200; key.shadow.bias=-0.0005;
+  sc.add(key);
+  const fill=new THREE.DirectionalLight(0xffffff,0.7); fill.position.set(350,250,250); sc.add(fill);
+  const rim=new THREE.DirectionalLight(0xffffff,0.6); rim.position.set(200,350,-400); sc.add(rim);
   return sc;
 }
 function buildPromptTxt(colourName){
@@ -2198,29 +2204,23 @@ async function startStudioExport(hex, colourName, baseName){
   if(!vaseMesh){ alert('Nothing to render.'); return; }
   if(raytracing||pt) stopRaytrace();
   rtExporting=true;
-  let ptx=null, studio=null;
+  let studio=null, geo=null;
   try{
-    setRTProgress('Preparing studio render…',0);
-    const {WebGLPathTracer}=await import('three-gpu-pathtracer');
-    studio=buildStudioScene(hex);
+    setRTProgress('Rendering studio shot…',100);            // single viewport frame — near-instant
+    geo=buildGeometry({...state, resolution:'fine'});        // clean, fine-resolution mesh
+    studio=buildStudioScene(hex, geo);
     renderer.setSize(1440,1800,false); camera.aspect=1440/1800; camera.updateProjectionMatrix();
-    ptx=new WebGLPathTracer(renderer);
-    ptx.renderScale=1; ptx.dynamicLowRes=false; ptx.bounces=6; ptx.tiles.set(2,2);
-    await ptx.setScene(studio, camera);
-    await new Promise(res=>{ const tick=()=>{ try{ ptx.renderSample(); }catch(e){ return res(e); }
-      const pct=Math.min(100,Math.round(ptx.samples/STUDIO_TARGET*100)); setRTProgress('Rendering studio shot… '+pct+'%',pct);
-      if(ptx.samples>=STUDIO_TARGET) return res(); requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
-    ptx.renderSample();   // fresh full-quality frame immediately before capture
+    renderer.render(studio, camera);                         // normal viewport renderer, one frame
     renderer.domElement.toBlob(blob=>{
       if(blob) downloadBlob(blob, baseName+'-studio.png');
       downloadBlob(new Blob([buildPromptTxt(colourName)],{type:'text/plain;charset=utf-8'}), baseName+'-prompt.txt');
-      try{ptx.dispose();}catch(e){}
-      if(studio) studio.traverse(o=>{ if(o.geometry&&o!==vaseMesh) o.geometry.dispose(); if(o.material&&o.material.dispose) o.material.dispose(); });
+      geo.dispose();
+      if(studio) studio.traverse(o=>{ if(o.geometry&&o.geometry!==geo) o.geometry.dispose(); if(o.material&&o.material.dispose) o.material.dispose(); });
       onResize(); rtExporting=false; setRTProgress('',0);
     },'image/png');
   }catch(err){
     console.error('studio export failed',err);
-    if(ptx){try{ptx.dispose();}catch(e){}}
+    if(geo)geo.dispose();
     onResize(); rtExporting=false; setRTProgress('Studio render failed: '+err.message,0,true);
   }
 }
