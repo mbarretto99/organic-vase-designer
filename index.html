@@ -2125,7 +2125,7 @@ async function startRaytrace(choice){
     rtScene=buildRTScene(envTex, choice==='hdri');
     pt=new WebGLPathTracer(renderer);
     pt.renderScale=0.9; pt.dynamicLowRes=true; pt.bounces=6; pt.tiles.set(2,2);
-    await pt.setSceneAsync(rtScene, camera);
+    await pt.setScene(rtScene, camera);
     rtBusy=false; rtNeedReset=false;
     setRTProgress('Raytracing… 0%',0);
   }catch(err){
@@ -2183,7 +2183,7 @@ async function startStudioExport(hex, colourName, baseName){
     renderer.setSize(1440,1800,false); camera.aspect=1440/1800; camera.updateProjectionMatrix();
     ptx=new WebGLPathTracer(renderer);
     ptx.renderScale=1; ptx.dynamicLowRes=false; ptx.bounces=6; ptx.tiles.set(2,2);
-    await ptx.setSceneAsync(studio, camera);
+    await ptx.setScene(studio, camera);
     await new Promise(res=>{ const tick=()=>{ try{ ptx.renderSample(); }catch(e){ return res(e); }
       const pct=Math.min(100,Math.round(ptx.samples/STUDIO_TARGET*100)); setRTProgress('Rendering studio shot… '+pct+'%',pct);
       if(ptx.samples>=STUDIO_TARGET) return res(); requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
