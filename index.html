@@ -2113,7 +2113,7 @@ function buildRTScene(envTex,useHDRIbg){
   sc.environment=envTex; sc.environmentIntensity=1.4;       // brighter ambient so the env alone doesn't backlight the vase
   sc.background = useHDRIbg ? envTex : new THREE.Color(0xE9DFC4);
   if(vaseMesh){
-    const clay=new THREE.MeshStandardMaterial({color:0xEAE3D2,roughness:0.6,metalness:0}); // off-white matte
+    const clay=new THREE.MeshStandardMaterial({color:0xEAE3D2,roughness:0.6,metalness:0,side:THREE.DoubleSide}); // off-white matte, double-sided (solid + top rim)
     sc.add(new THREE.Mesh(vaseMesh.geometry, clay));
   }
   const wood=new THREE.MeshStandardMaterial({color:0x4a3527,roughness:0.55,metalness:0});
@@ -2133,9 +2133,13 @@ async function startRaytrace(choice){
   raytracing=true; rtBusy=true;
   setResButtonOn('raytrace');
   setRTProgress(choice==='hdri'?'Loading HDRI…':'Building room…',0);
-  // auto-collapse the params panel for a full-width canvas
-  ppOpen=false; document.getElementById('pp').classList.add('closed',true);
-  document.getElementById('panel-toggle').textContent='‹ Params'; setTimeout(onResize,300);
+  // auto-collapse the params panel, wait for the transition, then resize the canvas to
+  // full width BEFORE initialising the path tracer — otherwise it renders at the old
+  // smaller size and the freed params area stays blank.
+  ppOpen=false; document.getElementById('pp').classList.add('closed');
+  document.getElementById('panel-toggle').textContent='‹ Params';
+  await new Promise(r=>setTimeout(r,330));
+  onResize();
   try{
     const {WebGLPathTracer}=await import('three-gpu-pathtracer');
     let envTex = choice==='hdri' ? await loadHDRI() : roomEnvTex();
