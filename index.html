@@ -2180,24 +2180,76 @@ function buildStudioScene(hex, geo){
   return sc;
 }
 function buildPromptTxt(colourName){
-  // Five product-placement scenes; each vase colour maps to the most fitting one.
+  // Five colour-tailored product-placement scenes per colour; one is picked at
+  // random each export so re-running gives variety.
   const scenes={
-    'Bright Scandinavian':'on a pale oak shelf against warm white plaster walls, soft diffused daylight from a large window at left, sheer linen curtain blurred in the background, a few dried grasses in the vase. Photorealistic interior photography, 50mm lens, shallow depth of field, calm minimal Scandinavian aesthetic.',
-    'Warm earthy study':'on a walnut writing desk in a cosy study, warm lamplight, leather-bound books and a brass lamp softly blurred behind, a rich oriental rug. Photorealistic interior photography, 50mm lens, shallow depth of field, warm editorial aesthetic.',
-    'Botanical conservatory':'on a stone plinth in a sunlit conservatory, lush green ferns and hanging plants softly blurred behind, dappled morning light, terracotta floor tiles. Photorealistic interior photography, 50mm lens, shallow depth of field, fresh botanical aesthetic.',
-    'Moody evening lounge':'on a black marble side table in a dim evening lounge, a warm pool of lamplight, a velvet sofa and a glowing table lamp softly blurred behind, deep shadows. Photorealistic interior photography, 50mm lens, shallow depth of field, moody cinematic aesthetic.',
-    'Art-deco interior':'on a mirrored art-deco console, geometric brass wall panels softly blurred behind, warm golden lamplight, a single stylised bloom in the vase. Photorealistic interior photography, 50mm lens, shallow depth of field, luxurious art-deco aesthetic.'
+    'Matte White':[
+      {t:'Scandinavian shelf',b:'on a pale oak shelf against warm white plaster walls, soft diffused daylight from a window at left, a sheer linen curtain blurred behind, a few dried grasses in the vase. Calm minimal Scandinavian interior, 50mm lens, shallow depth of field.'},
+      {t:'White marble kitchen',b:'on a white marble kitchen island in bright morning light, fresh eucalyptus stems in the vase, blurred ceramics behind. Bright modern kitchen, 50mm lens, shallow depth of field.'},
+      {t:'Whitewashed room',b:'on a pale stone plinth in a sunlit whitewashed room, dappled light through slatted shutters, a single olive branch. Mediterranean minimal interior, 50mm lens, shallow depth of field.'},
+      {t:'Light concrete loft',b:'on a light concrete side table in soft north light, a blurred textured rug behind, dried pampas in the vase. Modern minimalist loft, 50mm lens, shallow depth of field.'},
+      {t:'Window sill',b:'on a white-painted window sill in soft daylight, a gauzy curtain blurred behind, fresh white tulips. Airy contemporary interior, 50mm lens, shallow depth of field.'}
+    ],
+    'Oak':[
+      {t:'Oak shelf',b:'on a pale oak shelf against warm white plaster, soft daylight, dried grasses in the vase. Scandinavian interior, 50mm lens, shallow depth of field.'},
+      {t:'Beech console',b:'on a light beech console in warm afternoon light, a woven basket blurred behind, eucalyptus stems. Warm natural interior, 50mm lens, shallow depth of field.'},
+      {t:'Reclaimed mantel',b:'on a reclaimed-wood mantel in soft window light, a linen runner, dried lavender. Modern rustic interior, 50mm lens, shallow depth of field.'},
+      {t:'Ash kitchen table',b:'on a pale ash kitchen table in bright light, fresh herbs in the vase, a ceramic jug blurred behind. Modern farmhouse kitchen, 50mm lens, shallow depth of field.'},
+      {t:'Birch side table',b:'on a birch side table in soft daylight, a blurred indoor plant behind, pampas grass. Light natural interior, 50mm lens, shallow depth of field.'}
+    ],
+    'Moss':[
+      {t:'Sunlit conservatory',b:'on a stone plinth in a sunlit conservatory, lush ferns and hanging plants blurred behind, dappled morning light, terracotta floor tiles. Botanical conservatory, 50mm lens, shallow depth of field.'},
+      {t:'Greenhouse bench',b:'on a wooden greenhouse bench in soft hazy light, trailing vines blurred behind, seedlings. Greenhouse interior, 50mm lens, shallow depth of field.'},
+      {t:'Green room',b:'on a moss-green painted shelf in warm window light, leafy plants blurred behind, dried ferns. Earthy botanical room, 50mm lens, shallow depth of field.'},
+      {t:'Terracotta courtyard',b:'on a terracotta side table in warm daylight, blurred palms behind, dried wildflowers. Mediterranean courtyard, 50mm lens, shallow depth of field.'},
+      {t:'Plant-filled room',b:'on a weathered-wood table in soft natural light, a blurred fiddle-leaf fig behind, dried wheat. Lush plant-filled interior, 50mm lens, shallow depth of field.'}
+    ],
+    'Olive':[
+      {t:'Walnut console',b:'on a walnut console in warm golden-hour light, terracotta and rattan accents blurred behind. Warm earthy editorial, 35mm lens, shallow depth of field.'},
+      {t:'Wooden farm table',b:'on an old wooden farm table in warm afternoon light, olives and a linen cloth, a blurred copper pot. Rustic Mediterranean, 50mm lens, shallow depth of field.'},
+      {t:'Tuscan stone ledge',b:'on a stone ledge in warm Tuscan light, blurred cypress branches, terracotta tiles. Mediterranean rustic interior, 50mm lens, shallow depth of field.'},
+      {t:'Cosy sideboard',b:'on a dark wood sideboard in warm lamplight, a blurred brass lamp and books behind. Cosy study, 50mm lens, shallow depth of field.'},
+      {t:'Clay-plaster shelf',b:'on a clay-plaster shelf with low warm sunlight raking the wall, blurred woven textiles behind. Warm earthen interior, 50mm lens, shallow depth of field.'}
+    ],
+    'Stone':[
+      {t:'Concrete side table',b:'on a polished concrete side table in soft cool daylight, a blurred grey sofa behind, a single sculptural branch. Modern minimalist, 50mm lens, shallow depth of field.'},
+      {t:'Steel-and-glass loft',b:'on a steel-and-glass console in bright neutral light, a blurred city window behind. Modern industrial loft, 50mm lens, shallow depth of field.'},
+      {t:'Slate shelf',b:'on a slate shelf in soft overcast light, a blurred concrete wall behind, dried thistle. Brutalist modern interior, 50mm lens, shallow depth of field.'},
+      {t:'Grey marble table',b:'on a grey marble table in soft daylight, blurred monochrome artwork behind, a white orchid. Contemporary gallery interior, 50mm lens, shallow depth of field.'},
+      {t:'Cement plinth',b:'on a cement plinth in even soft light, a blurred micro-cement wall behind, dried seed heads. Modern organic interior, 50mm lens, shallow depth of field.'}
+    ],
+    'Deep Blue':[
+      {t:'Evening lounge',b:'on a black marble side table in a dim evening lounge, a warm pool of lamplight, a velvet sofa and a glowing lamp blurred behind. Moody cinematic, 50mm lens, shallow depth of field.'},
+      {t:'Navy shelf',b:'on a navy-painted shelf in low evening light, brass candleholders blurred behind, a single dark bloom. Dramatic evening room, 50mm lens, shallow depth of field.'},
+      {t:'Moody library',b:'on a dark walnut desk in warm lamplight, leather books and a brass lamp blurred behind, deep shadows. Moody library, 50mm lens, shallow depth of field.'},
+      {t:'Penthouse at night',b:'on a smoked-glass table in blue evening light, a blurred city-night window behind. Luxe penthouse interior, 50mm lens, shallow depth of field.'},
+      {t:'Candlelit lounge',b:'on a slate console by candlelight, blurred dark velvet drapes behind, dried dark flowers. Atmospheric lounge, 50mm lens, shallow depth of field.'}
+    ],
+    'Rosewood':[
+      {t:'Art-deco console',b:'on a mirrored art-deco console, geometric brass wall panels blurred behind, warm golden lamplight, a single stylised bloom. Luxurious art-deco, 50mm lens, shallow depth of field.'},
+      {t:'Antique sideboard',b:'on an antique mahogany sideboard in warm candlelight, blurred velvet and brass behind. Vintage luxe interior, 50mm lens, shallow depth of field.'},
+      {t:'Classic study',b:'on a rosewood writing desk in warm afternoon light, blurred leather and gilded frames behind. Classic study, 50mm lens, shallow depth of field.'},
+      {t:'Opulent mantel',b:'on a dark marble mantel in warm firelight, blurred damask and brass behind, dried roses. Opulent vintage room, 50mm lens, shallow depth of field.'},
+      {t:'Maximalist cabinet',b:'on a lacquered cabinet in soft golden light, blurred oriental rug and silk behind. Rich maximalist interior, 50mm lens, shallow depth of field.'}
+    ],
+    'Walnut':[
+      {t:'Writing desk',b:'on a walnut writing desk in a cosy study, warm lamplight, leather books and a brass lamp blurred behind, an oriental rug. Warm editorial, 50mm lens, shallow depth of field.'},
+      {t:'Mid-century sideboard',b:'on a mid-century walnut sideboard in warm afternoon light, blurred teak and brass behind, dried branches. Mid-century modern, 50mm lens, shallow depth of field.'},
+      {t:'Dining table',b:'on a dark wood dining table in warm candlelight, blurred ceramic and linen behind, eucalyptus. Warm dining room, 50mm lens, shallow depth of field.'},
+      {t:'Library shelf',b:'on a walnut shelf in soft reading-light, blurred bookshelves behind, dried pampas. Cosy library, 50mm lens, shallow depth of field.'},
+      {t:'Walnut console',b:'on a walnut console in golden-hour light, blurred art and warm textiles behind. Warm contemporary interior, 50mm lens, shallow depth of field.'}
+    ]
   };
-  const map={'Matte White':'Bright Scandinavian','Oak':'Bright Scandinavian','Stone':'Bright Scandinavian','Walnut':'Warm earthy study','Olive':'Warm earthy study','Moss':'Botanical conservatory','Deep Blue':'Moody evening lounge','Rosewood':'Art-deco interior'};
-  const scene=map[colourName]||'Warm earthy study';
+  const list=scenes[colourName]||scenes['Walnut'];
+  const sc=list[Math.floor(Math.random()*list.length)];
   return [
     'Forma Flora — AI product placement prompt',
-    'Vessel colour: '+colourName+'   |   Scene: '+scene,
+    'Vessel colour: '+colourName+'   |   Scene: '+sc.t,
     '',
     'HOW TO USE: attach the studio render (-studio.png) as the image reference in nano banana 2 or Midjourney, then paste the prompt below. The "keep its geometry... perfectly identical" clause stops the model redesigning the vase.',
     '',
-    '=== '+scene.toUpperCase()+' ===',
-    'Place this exact '+colourName+' vessel (keep its geometry, proportions, <distinctive features> and matte finish perfectly identical) '+scenes[scene],
+    '=== '+sc.t.toUpperCase()+' ===',
+    'Place this exact '+colourName+' vessel (keep its geometry, proportions, <distinctive features> and matte finish perfectly identical) '+sc.b,
     ''
   ].join('\n');
 }
