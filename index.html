@@ -141,6 +141,7 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
         <button class="vbtn" data-res="draft">Draft</button>
         <button class="vbtn on" data-res="standard">Std</button>
         <button class="vbtn" data-res="fine">Fine</button>
+        <button class="vbtn" data-res="raytrace">Raytrace</button>
       </div>
     </div>
     <div id="rt-overlay" style="display:none;position:absolute;left:12px;bottom:12px;align-items:center;gap:8px;background:var(--panel-bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;z-index:30">
@@ -1774,6 +1775,7 @@ document.getElementById('svg-file-input').addEventListener('change',e=>{
 document.querySelectorAll('#res-group .vbtn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     const r=btn.dataset.res;
+    if(r==='raytrace'){ startRaytrace('room'); return; }   // single fastest method (procedural room)
     stopRaytrace();
     document.querySelectorAll('#res-group .vbtn').forEach(b=>b.classList.remove('on'));
     btn.classList.add('on');state.resolution=r;
@@ -2178,14 +2180,24 @@ function buildStudioScene(hex, geo){
   return sc;
 }
 function buildPromptTxt(colourName){
+  // Five product-placement scenes; each vase colour maps to the most fitting one.
+  const scenes={
+    'Bright Scandinavian':'on a pale oak shelf against warm white plaster walls, soft diffused daylight from a large window at left, sheer linen curtain blurred in the background, a few dried grasses in the vase. Photorealistic interior photography, 50mm lens, shallow depth of field, calm minimal Scandinavian aesthetic.',
+    'Warm earthy study':'on a walnut writing desk in a cosy study, warm lamplight, leather-bound books and a brass lamp softly blurred behind, a rich oriental rug. Photorealistic interior photography, 50mm lens, shallow depth of field, warm editorial aesthetic.',
+    'Botanical conservatory':'on a stone plinth in a sunlit conservatory, lush green ferns and hanging plants softly blurred behind, dappled morning light, terracotta floor tiles. Photorealistic interior photography, 50mm lens, shallow depth of field, fresh botanical aesthetic.',
+    'Moody evening lounge':'on a black marble side table in a dim evening lounge, a warm pool of lamplight, a velvet sofa and a glowing table lamp softly blurred behind, deep shadows. Photorealistic interior photography, 50mm lens, shallow depth of field, moody cinematic aesthetic.',
+    'Art-deco interior':'on a mirrored art-deco console, geometric brass wall panels softly blurred behind, warm golden lamplight, a single stylised bloom in the vase. Photorealistic interior photography, 50mm lens, shallow depth of field, luxurious art-deco aesthetic.'
+  };
+  const map={'Matte White':'Bright Scandinavian','Oak':'Bright Scandinavian','Stone':'Bright Scandinavian','Walnut':'Warm earthy study','Olive':'Warm earthy study','Moss':'Botanical conservatory','Deep Blue':'Moody evening lounge','Rosewood':'Art-deco interior'};
+  const scene=map[colourName]||'Warm earthy study';
   return [
     'Forma Flora — AI product placement prompt',
-    'Vessel colour: '+colourName,
+    'Vessel colour: '+colourName+'   |   Scene: '+scene,
     '',
     'HOW TO USE: attach the studio render (-studio.png) as the image reference in nano banana 2 or Midjourney, then paste the prompt below. The "keep its geometry... perfectly identical" clause stops the model redesigning the vase.',
     '',
-    '=== WARM EARTHY (hero/feature shot, 4:5 or 16:9) ===',
-    'Place this exact '+colourName+' vessel (keep its geometry, proportions, <distinctive features> and matte finish perfectly identical) on a walnut console against a textured clay-plaster wall, low golden-hour sunlight raking across the wall, terracotta and rattan accents softly blurred, 35mm lens, cinematic warm editorial style.',
+    '=== '+scene.toUpperCase()+' ===',
+    'Place this exact '+colourName+' vessel (keep its geometry, proportions, <distinctive features> and matte finish perfectly identical) '+scenes[scene],
     ''
   ].join('\n');
 }
