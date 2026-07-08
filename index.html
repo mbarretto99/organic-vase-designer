@@ -2117,7 +2117,7 @@ function roomEnvTex(){
 }
 function buildRTScene(envTex,useHDRIbg){
   const sc=new THREE.Scene();
-  sc.environment=envTex; sc.environmentIntensity=1.5;       // soft, bright ambient -> diffused, gentle shadows
+  sc.environment=envTex; sc.environmentIntensity=0.6;       // less ambient -> deeper shadows that read the form
   const beige=0xE9DFC4;
   sc.background = useHDRIbg ? envTex : new THREE.Color(beige);
   if(vaseMesh){
@@ -2131,8 +2131,8 @@ function buildRTScene(envTex,useHDRIbg){
   const disc=new THREE.Mesh(new THREE.CircleGeometry(150,64),new THREE.MeshStandardMaterial({color:0x3a2a1e,roughness:0.6}));
   disc.rotation.x=-Math.PI/2; disc.position.y=0.05; sc.add(disc);
   // Soft, diffused front-left key + gentle fill (no harsh shadows).
-  const key=new THREE.DirectionalLight(0xffffff,1.0); key.position.set(-260,320,260); sc.add(key);
-  const fill=new THREE.DirectionalLight(0xffffff,0.7); fill.position.set(300,220,240); sc.add(fill);
+  const key=new THREE.DirectionalLight(0xffffff,1.0); key.position.set(-380,320,40); sc.add(key);   // raking side light, further back -> more shadow on the curves
+  const fill=new THREE.DirectionalLight(0xffffff,0.3); fill.position.set(300,220,240); sc.add(fill);
   return sc;
 }
 async function startRaytrace(choice){
