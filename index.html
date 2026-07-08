@@ -1782,7 +1782,7 @@ document.getElementById('svg-file-input').addEventListener('change',e=>{
 document.querySelectorAll('#res-group .vbtn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     const r=btn.dataset.res;
-    if(r==='raytrace'){ startRaytrace('room'); return; }   // single fastest method (procedural room)
+    if(r==='raytrace'){ startRaytrace('hdri'); return; }   // real living-room HDRI environment
     stopRaytrace();
     document.querySelectorAll('#res-group .vbtn').forEach(b=>b.classList.remove('on'));
     btn.classList.add('on');state.resolution=r;
@@ -2098,7 +2098,7 @@ function graniteMaterial(){
   return new THREE.MeshStandardMaterial({map:g.diff,normalMap:g.nor,roughnessMap:g.rough,roughness:1,metalness:0.05});
 }
 function loadHDRI(){ return new Promise((res,rej)=>{ if(hdriTex)return res(hdriTex);
-  new RGBELoader().load('hdri/lythwood_lounge_2k.hdr',(t)=>{t.mapping=THREE.EquirectangularReflectionMapping;hdriTex=t;res(t);},undefined,rej); }); }
+  new RGBELoader().load('hdri/lythwood_lounge_1k.hdr',(t)=>{t.mapping=THREE.EquirectangularReflectionMapping;hdriTex=t;res(t);},undefined,rej); }); }
 function roomEnvTex(){
   // Procedural equirectangular env (warm soft studio). Must be an equirectangular
   // float texture because three-gpu-pathtracer samples the env via .image.data —
@@ -2117,21 +2117,26 @@ function roomEnvTex(){
 }
 function buildRTScene(envTex,useHDRIbg){
   const sc=new THREE.Scene();
-  sc.environment=envTex; sc.environmentIntensity=0.6;       // less ambient -> deeper shadows that read the form
+  sc.environment=envTex; sc.environmentIntensity=useHDRIbg?1.0:0.6;
   const beige=0xE9DFC4;
   sc.background = useHDRIbg ? envTex : new THREE.Color(beige);
   if(vaseMesh){
     const clay=new THREE.MeshStandardMaterial({color:0xF0ECE4,roughness:0.6,metalness:0,side:THREE.DoubleSide}); // matte warm white
     sc.add(new THREE.Mesh(vaseMesh.geometry, clay));
   }
-  // Seamless light-beige floor (matches the backdrop for a studio cyclorama feel).
-  const floor=new THREE.Mesh(new THREE.CircleGeometry(900,64),new THREE.MeshStandardMaterial({color:beige,roughness:1}));
-  floor.rotation.x=-Math.PI/2; floor.position.y=0; sc.add(floor);
-  // Dark brown disc the vase sits on.
-  const disc=new THREE.Mesh(new THREE.CircleGeometry(150,64),new THREE.MeshStandardMaterial({color:0x3a2a1e,roughness:0.6}));
-  disc.rotation.x=-Math.PI/2; disc.position.y=0.05; sc.add(disc);
-  // Soft, diffused front-left key + gentle fill (no harsh shadows).
-  const key=new THREE.DirectionalLight(0xffffff,1.0); key.position.set(-380,320,40); sc.add(key);   // raking side light, further back -> more shadow on the curves
+  if(useHDRIbg){
+    // Real room is the background; vase sits on a warm wood table.
+    const table=new THREE.Mesh(new THREE.CircleGeometry(160,64),new THREE.MeshStandardMaterial({color:0x6b4a2f,roughness:0.5}));
+    table.rotation.x=-Math.PI/2; table.position.y=0.05; sc.add(table);
+  } else {
+    // Studio: seamless beige floor + dark disc.
+    const floor=new THREE.Mesh(new THREE.CircleGeometry(900,64),new THREE.MeshStandardMaterial({color:beige,roughness:1}));
+    floor.rotation.x=-Math.PI/2; floor.position.y=0; sc.add(floor);
+    const disc=new THREE.Mesh(new THREE.CircleGeometry(150,64),new THREE.MeshStandardMaterial({color:0x3a2a1e,roughness:0.6}));
+    disc.rotation.x=-Math.PI/2; disc.position.y=0.05; sc.add(disc);
+  }
+  // Front fill lights so the room's bright window doesn't backlight the vase.
+  const key=new THREE.DirectionalLight(0xffffff,1.0); key.position.set(-380,320,40); sc.add(key);
   const fill=new THREE.DirectionalLight(0xffffff,0.3); fill.position.set(300,220,240); sc.add(fill);
   return sc;
 }
