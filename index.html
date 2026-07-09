@@ -3,7 +3,14 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>OrganicVase Designer</title>
+<title>Forma Flora Designer</title>
+<link rel="manifest" href="manifest.webmanifest"/>
+<link rel="icon" type="image/png" href="favicon-32.png"/>
+<link rel="apple-touch-icon" href="icon-180.png"/>
+<meta name="theme-color" content="#6E7548"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="Forma Flora"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -118,13 +125,14 @@ label.ck input{accent-color:var(--accent);width:13px;height:13px}
 <div id="loading"><div class="spin"></div><p>Initialising OrganicVase Designer…</p></div>
 
 <header id="header">
-  <div id="app-name"><span class="dot"></span>OrganicVase Designer</div>
+  <div id="app-name"><span class="dot"></span>Forma Flora Designer</div>
   <div class="hsp"></div>
-  <input id="design-name" type="text" value="Untitled Vase"/>
+  <input id="design-name" type="text" value="Untitled Vase" readonly title="Use Save As to rename"/>
   <span class="save-status" id="save-status">Unsaved</span>
   <button class="hbtn" id="btn-new">⊕ New</button>
   <button class="hbtn" id="btn-open">📂 Open</button>
   <button class="hbtn" id="btn-save">💾 Save</button>
+  <button class="hbtn" id="btn-saveas">💾 Save As…</button>
   <button class="hbtn primary" id="btn-export">↓ Export</button>
 </header>
 
@@ -1922,6 +1930,7 @@ document.addEventListener('keydown',e=>{
     if(e.key==='z'&&!e.shiftKey){e.preventDefault();document.getElementById('btn-undo').click();}
     if((e.key==='z'&&e.shiftKey)||e.key==='y'){e.preventDefault();document.getElementById('btn-redo').click();}
     if(e.key==='s'){e.preventDefault();document.getElementById('btn-save').click();}
+    if(e.key==='S'){e.preventDefault();document.getElementById('btn-saveas').click();}
     if(e.key==='o'){e.preventDefault();document.getElementById('btn-open').click();}
     if(e.key==='n'){e.preventDefault();document.getElementById('btn-new').click();}
   }
@@ -1942,12 +1951,34 @@ function downloadBlob(blob,filename){
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
-document.getElementById('btn-save').addEventListener('click',()=>{
-  const data={format:'vasedesign',version:'2.0',meta:{name:document.getElementById('design-name').value,modified:new Date().toISOString()},state:cloneS()};
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  downloadBlob(blob,(document.getElementById('design-name').value||'untitled')+'.vasedesign');
-  markSaved();
-});
+// ── SAVE: File System Access API (desktop) + download fallback ───────────────
+let currentFileHandle=null, currentFileName=null;
+function designTitle(){ return currentFileName || 'Untitled Vase'; }
+function setDesignTitle(n){ currentFileName=(n&&String(n).trim())?String(n).trim():null; const el=document.getElementById('design-name'); if(el) el.value=designTitle(); }
+function sanitizeFileName(n){ return (n||'untitled-vase').replace(/[\\\\/:*?"<>|]/g,'-').trim()||'untitled-vase'; }
+function stripExt(n){ return String(n).replace(/\.vasedesign$/i,''); }
+function buildSaveData(){ return JSON.stringify({format:'vasedesign',version:'2.0',meta:{name:designTitle(),modified:new Date().toISOString()},state:cloneS()},null,2); }
+async function doSave(){
+  if(currentFileName===null) return doSaveAs();
+  const json=buildSaveData();
+  if(currentFileHandle){ try{ const w=await currentFileHandle.createWritable(); await w.write(json); await w.close(); markSaved(); return; }catch(e){} }
+  downloadBlob(new Blob([json],{type:'application/json'}), sanitizeFileName(currentFileName)+'.vasedesign'); markSaved();
+}
+async function doSaveAs(){
+  const json=buildSaveData();
+  if(window.showSaveFilePicker){
+    try{
+      const h=await window.showSaveFilePicker({ suggestedName:sanitizeFileName(currentFileName||'untitled-vase')+'.vasedesign', types:[{description:'Vase design', accept:{'application/json':['.vasedesign']}}] });
+      const w=await h.createWritable(); await w.write(json); await w.close();
+      currentFileHandle=h; setDesignTitle(stripExt(h.name)); markSaved(); return;
+    }catch(e){ if(e&&e.name==='AbortError') return; }
+  }
+  const name=prompt('Save design as:', sanitizeFileName(currentFileName||'untitled-vase'));
+  if(!name) return;
+  setDesignTitle(sanitizeFileName(name)); downloadBlob(new Blob([json],{type:'application/json'}), sanitizeFileName(name)+'.vasedesign'); markSaved();
+}
+document.getElementById('btn-save').addEventListener('click',doSave);
+document.getElementById('btn-saveas').addEventListener('click',doSaveAs);
 document.getElementById('btn-open').addEventListener('click',()=>{
   const inp=document.createElement('input');inp.type='file';inp.accept='.vasedesign';
   inp.onchange=e=>{
@@ -1988,7 +2019,7 @@ document.getElementById('btn-open').addEventListener('click',()=>{
   syncAllUI();
   schedRebuild();
   markSaved();
-  if(d.meta&&d.meta.name) document.getElementById('design-name').value=d.meta.name;
+  setDesignTitle(stripExt(f.name));
 }catch(err){alert('Load error: '+err.message);}};
     r.readAsText(f);
   };inp.click();
@@ -2344,6 +2375,9 @@ setTimeout(()=>document.getElementById('loading').classList.add('gone'),900);
 
 // Convenience: make A accessible for SVG import sizing
 const A=360; // default angular samples for import
+
+// PWA: register service worker (offline + installable)
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{})); }
 
 </script>
 </body>
